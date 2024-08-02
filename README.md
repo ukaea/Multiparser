@@ -6,6 +6,7 @@
 [![PyPI Latest Release](https://img.shields.io/pypi/v/ukaea-multiparser.svg)](https://pypi.org/project/ukaea-multiparser/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ukaea-multiparser)
  [![multiparser](https://github.com/ukaea/multiparser/actions/workflows/test_run_multiparser.yaml/badge.svg?branch=main)](https://github.com/ukaea/multiparser/actions/workflows/test_run_multiparser.yaml)
+ [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 _Multiparser_ is module for performing functionality across a set of output files. Given a set of files, and optionally a list of output parameter names or regex filters the module keeps track of changes by monitoring the "last modified" timestamp of each file and executing the assigned callback.
 
