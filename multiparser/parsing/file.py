@@ -160,12 +160,11 @@ SUFFIX_PARSERS: typing.Dict[typing.Tuple[str, ...], typing.Callable] = {
 }
 
 
-def _full_file_parse(parse_func, in_file, tracked_values) -> TimeStampedData:
+def _full_file_parse(parse_func, in_file, tracked_values, **parser_kwargs) -> TimeStampedData:
     """Apply specific parser to a file"""
     _data: typing.List[typing.Dict[str, typing.Any]]
     _meta: typing.Dict[str, typing.Any]
-
-    _parsed = parse_func(input_file=in_file)
+    _parsed = parse_func(input_file=in_file, **parser_kwargs)
     _meta, _data = _parsed
 
     # Need to handle case where there is only one set of values and
@@ -196,10 +195,11 @@ def _full_file_parse(parse_func, in_file, tracked_values) -> TimeStampedData:
 
 def record_file(
     input_file: str,
-    tracked_values: typing.List[re.Pattern[str]] | None,
-    parser_func: typing.Callable | None,
-    file_type: str | None,
-    **_,
+    *,
+    tracked_values: typing.List[re.Pattern[str]] | None = None,
+    parser_func: typing.Callable | None = None,
+    file_type: str | None = None,
+    **parser_kwargs
 ) -> TimeStampedData:
     """Record a recognised file, parsing its contents.
 
@@ -216,6 +216,9 @@ def record_file(
         a custom parser to use for the given file
     file_type : str | None
         override the parser by file extension choice
+    **parser_kwargs
+        arguments to pass to a custom file parsing function if provided
+
 
     Returns
     -------
@@ -232,12 +235,12 @@ def record_file(
     _tracked_vals: typing.List[re.Pattern[str]] | None = tracked_values or []
 
     if parser_func:
-        return _full_file_parse(parser_func, input_file, _tracked_vals)
+        return _full_file_parse(parser_func, input_file, _tracked_vals, **parser_kwargs)
     else:
         for key, parser in SUFFIX_PARSERS.items():
             if _extension not in key:
                 continue
-            return _full_file_parse(parser, input_file, _tracked_vals)
+            return _full_file_parse(parser, input_file, _tracked_vals, **parser_kwargs)
 
     loguru.logger.error(
         f"The file extension '{_extension}' for file '{input_file}' is not supported for 'record_file' without custom parsing"
