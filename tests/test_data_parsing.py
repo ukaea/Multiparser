@@ -11,6 +11,7 @@ from conftest import fake_csv, fake_feather, fake_nml, fake_toml
 
 import multiparser.parsing as mp_parse
 from multiparser.parsing.file import (
+    file_parser,
     record_csv as file_record_csv,
     record_fortran_nml,
     record_feather,
@@ -34,7 +35,7 @@ def test_parse_f90nml() -> None:
     with tempfile.TemporaryDirectory() as temp_d:
         _data_file = fake_nml(temp_d)
         _meta, _data = record_fortran_nml(input_file=_data_file)
-        _, _data2 = mp_parse.record_file(_data_file, None, None, None)
+        _, _data2 = mp_parse.record_file(_data_file, tracked_values=None, parser_func=None, file_type=None)
         assert "timestamp" in _meta
         assert list(sorted(_data.items())) == sorted(_data2.items())
 
@@ -44,7 +45,7 @@ def test_parse_csv() -> None:
     with tempfile.TemporaryDirectory() as temp_d:
         _data_file = fake_csv(temp_d)
         _meta, _data = file_record_csv(input_file=_data_file)
-        _, _data2 = mp_parse.record_file(_data_file, None, None, None)
+        _, _data2 = mp_parse.record_file(_data_file, tracked_values=None, parser_func=None, file_type=None)
         assert "timestamp" in _meta
         assert sorted([i.items() for i in _data]) == sorted([i.items() for i in _data2])
 
@@ -65,7 +66,7 @@ def test_parse_toml() -> None:
     with tempfile.TemporaryDirectory() as temp_d:
         _data_file = fake_toml(temp_d)
         _meta, _data = record_toml(input_file=_data_file)
-        _, _data2 = mp_parse.record_file(_data_file, None, None, None)
+        _, _data2 = mp_parse.record_file(_data_file, tracked_values=None, parser_func=None, file_type=None)
         assert "timestamp" in _meta
         assert list(sorted(_data.items())) == sorted(_data2.items())
 
@@ -76,7 +77,7 @@ def test_unrecognised_file_type() -> None:
         with open(temp_f.name, "w") as out_f:
             out_f.write("...")
         with pytest.raises(TypeError):
-            mp_parse.record_file(temp_f.name, None, None)
+            mp_parse.record_file(temp_f.name, tracked_values=None, parser_func=None, file_type=None)
 
 
 @pytest.mark.parsing

@@ -21,7 +21,8 @@ import multiparser.exceptions as mp_exc
 import multiparser.thread as mp_thread
 import multiparser.parsing as mp_parse
 from tests.conftest import fake_feather, fake_json, fake_parquet, fake_pickle, fake_yaml
-from multiparser.parsing.tail import record_with_delimiter as tail_record_delimited
+from multiparser.parsing.tail import log_parser, record_with_delimiter as tail_record_delimited
+from multiparser.parsing.file import file_parser
 
 
 DATA_LIBRARY: str = os.path.join(os.path.dirname(__file__), "data")
@@ -213,7 +214,8 @@ def test_custom_data(stage: int, contains: tuple[str, ...]) -> None:
 
     @mp_parse.file_parser
     def _parser_func(
-        input_file: str
+        input_file: str,
+        **_
     ) -> tuple[dict[str, typing.Any], dict[str, typing.Any]]:
         _get_matrix = r"^[(\d+.\d+) *]{16}$"
         _initial_params_regex = r"^([\w_\(\)]+)\s*=\s*(\d+\.*\d*)$"
@@ -317,13 +319,13 @@ def test_parse_log_in_blocks() -> None:
         counter.value += 1
 
     @mp_parse.log_parser
-    def parser_func(file_data: str, **_) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
+    def parser_func(file_content: str, **_) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
         _regex_search_str = r"\s*Data Out\n\s*Result:\ (\d+\.\d+)\n\s*Metric:\ (\d+\.\d+)\n\s*Normalised:\ (\d+\.\d+)\n\s*Accuracy:\ (\d+\.\d+)\n\s*Deviation:\ (\d+\.\d+)"
 
         _parser = re.compile(_regex_search_str, re.MULTILINE)
         _out_data = []
 
-        for match_group in _parser.finditer(file_data):
+        for match_group in _parser.finditer(file_content):
             _out_data += [
                 {f"var_{i}": float(match_group.group(i+1)) for i in range(5)}
             ]
@@ -438,8 +440,9 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
 def test_parse_h5() -> None:
     _data_file: str = os.path.join(DATA_LIBRARY, "example.h5")
 
-    def parser_func(file_name: str):
-        return pandas.read_hdf(file_name, key={"key": "my_group/my_dataset"}).to_dict()
+    @file_parser
+    def parser_func(input_file: str, **_) -> tuple[dict[str, typing.Any, dict[str, typing.Any]]]:
+        return {}, pandas.read_hdf(file_name, key={"key": "my_group/my_dataset"}).to_dict()
 
     with multiparser.FileMonitor(
         per_thread_callback=lambda *_, **__: (),
@@ -492,6 +495,127 @@ def test_timeout_trigger() -> None:
         assert _test_passed.value == _timeout
 
 
+@pytest.mark.parsing
+@pytest.mark.parametrize(
+    "scenario", ("invalid_argument", "no_arbitrary_keyword_args", "undecorated")
+)
+@pytest.mark.parametrize(
+    "parser_type", ("file", "log")
+)
+def test_check_invalid_parser_functions(scenario: str, parser_type: str) -> None:
+    if scenario == "invalid_argument":
+        parser_func = lambda file_line: ({}, {})
+    elif parser_type == "log":
+        if scenario == "no_arbitrary_keyword_args":
+            parser_func = lambda file_content: ({}, {})
+        else:
+            parser_func = lambda file_content, **_: ({}, {})
+    elif parser_type == "file":
+        if scenario == "no_arbitrary_keyword_args":
+            parser_func = lambda input_file: ({}, {})
+        else:
+            parser_func = lambda input_file, **_: ({}, {})
+
+    if scenario != "undecorated":
+        parser_func = file_parser(parser_func) if parser_type == "file" else log_parser(parser_func)
+
+    with multiparser.FileMonitor(
+        log_level=logging.DEBUG,
+        timeout=2,
+        terminate_all_on_fail=True
+    ) as monitor:
+        with pytest.raises(AssertionError) as exc:
+            if parser_type == "file":
+                monitor.track(
+                    path_glob_exprs="*",
+                    parser_func=parser_func,
+                    static=True
+                )
+            else:
+                monitor.tail(
+                    path_glob_exprs="*",
+                    parser_func=parser_func,
+                )
+            monitor.run()
+
+    if scenario == "invalid_argument":
+        _exception = f"Expected keyword argument '{'input_file' if parser_type == 'file' else 'file_content'}'"
+    elif scenario == "undecorated":
+        _exception = f"must be decorated using the multiparser.{parser_type}_parser decorator"
+    else:
+        _exception = "must allow arbitrary number of keyword arguments"
+
+    assert _exception in str(exc.value)
+
+
+@pytest.mark.parsing
+def test_file_parser_with_args() -> None:
+    @file_parser
+    def parse_file(input_file: str, skip_lines: int, **_) -> tuple[dict, dict]:
+        with open(input_file) as in_file:
+            lines = in_file.readlines()
+        if skip_lines:
+            lines = lines[skip_lines:]
+        return {}, {"lines": lines}
+
+
+    with tempfile.TemporaryDirectory() as temp_d:
+        _data_file = fake_csv(temp_d)
+        _skip_lines = 2
+        with open(_data_file) as in_f:
+            n_lines = len(in_f.readlines())
+
+        def callback_check(data, _, n_lines=n_lines) -> None:
+            assert len(data["lines"]) == n_lines - _skip_lines
+
+        with multiparser.FileMonitor(
+            per_thread_callback=callback_check,
+            log_level=logging.DEBUG,
+            timeout=2,
+            terminate_all_on_fail=True
+        ) as monitor:
+            monitor.track(
+                path_glob_exprs=_data_file,
+                parser_func=parse_file,
+                parser_kwargs={"skip_lines": _skip_lines},
+                static=True
+            )
+            monitor.run()
+
+
+@pytest.mark.parsing
+def test_log_parser_with_args() -> None:
+    @log_parser
+    def parse_line(file_content: str, word_count: int, **_) -> tuple[dict, dict]:
+        _words = file_content.split(" ")
+        if word_count:
+            if len(_words) < word_count:
+                _words = word_count * [_words]
+            _words = _words[:word_count]
+        return {}, {"words": _words}
+
+
+    with tempfile.TemporaryDirectory() as temp_d:
+        _data_file = fake_csv(temp_d)
+        _word_count = 2
+
+        def callback_check(data, _, word_count=_word_count) -> None:
+            assert len(data["words"]) == _word_count
+
+        with multiparser.FileMonitor(
+            per_thread_callback=callback_check,
+            log_level=logging.DEBUG,
+            timeout=2,
+            terminate_all_on_fail=True
+        ) as monitor:
+            monitor.tail(
+                path_glob_exprs=_data_file,
+                parser_func=parse_line,
+                parser_kwargs={"word_count": _word_count},
+            )
+            monitor.run()
+        
+
 @pytest.mark.monitor
 @pytest.mark.parametrize(
     "style", ("normal", "mixed", "list")
@@ -500,7 +624,7 @@ def test_custom_parser(style: str) -> None:
     METADATA = {"meta": 2, "demo": "test"}
     DATA = {"a": 2, "b": 3.2, "c": "test"}
     @mp_parse.file_parser
-    def _parser_func(__: str, style=style, **_):
+    def _parser_func(input_file: str, style=style, **_):
         if style == "normal":
             return METADATA, DATA
         elif style == "mixed":

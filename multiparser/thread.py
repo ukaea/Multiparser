@@ -138,13 +138,12 @@ def _reparse_action(
     modified_time: str,
     tracked_vals: list[TrackableType],
     parsing_callback: LogFileParsingCallback | FullFileParsingCallback,
+    parser_kwargs: dict[str, typing.Any] | None,
     cstm_parser: ParserFunction | None,
     lock: typing.Any | None,
     monitor_callback: PerThreadCallback,
-    convert: bool,
     flatten_data: bool,
-    ignore_lines: list[str | re.Pattern[str]] | None,
-    **kwargs,
+    **_,
 ) -> dict[str, typing.Any]:
     """Action called when file has been modified
 
@@ -165,34 +164,29 @@ def _reparse_action(
         patterns describing data to capture
     parsing_callback : LogFileParsingCallback
         function to execute when parsing file, this also assembles relevant data
+    parser_kwargs : dict[str, typing.Any]
+        Arguments for parser function
     cstm_parser : ParserFunction | None
         override the default parser function which retrieves data
     lock : typing.Any | None
         thread lock
     monitor_callback : PerThreadCallback
         function executed when data is successfully extracted
-    convert : bool
-        whether to convert values from string
     flatten_data : bool
         whether to flatten the results to a single level dictionary
-    ignore_lines : list[str  |  re.Pattern[str]] | None
-        patterns for lines to ignore when parsing
 
     Returns
     -------
     dict[str, typing.Any]
         updated cached metadata
     """
-
     # Pass previous cached metadata to the parser in case required
     _parsed = parsing_callback(
         file_name,
         tracked_values=tracked_vals,  # type: ignore
         parser_func=cstm_parser,
-        convert=convert,
-        ignore_lines=ignore_lines,
         file_type=file_type,
-        **(cached_metadata | {k: v for k, v in kwargs.items() if v}),
+        **(cached_metadata | {k: v for k, v in (parser_kwargs or {}).items() if v}),
     )
 
     if not _parsed:
@@ -319,11 +313,9 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         callback: typing.Callable,
         static: bool = False,
         parser_func: typing.Callable | None = None,
-        parser_kwargs: typing.Dict | None = None,
-        convert: bool = True,
-        ignore_lines: typing.List[re.Pattern | str] | None = None,
         file_type: str | None = None,
-        **_,
+        glob_expr: str | None = None,
+        **parser_kwargs
     ) -> None:
         """Create a new thread for a monitored file
 
@@ -337,8 +329,6 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
             whether the file is written only once, by default False
         parser_func : typing.Callable | None, optional
             use a user defined parser instead
-        convert : bool, optional
-            convert values from string to numeric where appropriate
         """
 
         def _thread_exception_callback(
@@ -355,13 +345,11 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
             parsing_callback: CallbackType = self._parsing_callback,
             cstm_parser: ParserFunction | None = parser_func,
             file_name: str = file_name,
-            ignore_lines: list[re.Pattern[str] | str] | None = ignore_lines,
             tracked_vals: list[TrackableType] = tracked_values,
             termination_trigger: threading.Event = self._termination_trigger,
             interval: float = self._interval,
             static_read: bool = static,
             flatten_data: bool = flatten_data,
-            convert: bool = convert,
             kwargs: dict = parser_kwargs or {},
         ) -> None:
             """Thread target function for parsing of detected file"""
@@ -384,19 +372,15 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
                     # If the file has not been modified then we do not need to parse it
                     if (_modified_time, file_name) in records:
                         continue
-
                     _cached_metadata = _reparse_action(
                         file_type=file_type,
                         file_name=file_name,
-                        records=records,
                         cstm_parser=cstm_parser,
                         monitor_callback=monitor_callback,
                         parsing_callback=parsing_callback,
                         tracked_vals=tracked_vals,
-                        ignore_lines=ignore_lines,
                         lock=self._lock,
                         flatten_data=flatten_data,
-                        convert=convert,
                         cached_metadata=_cached_metadata,
                         modified_time=_modified_time,
                         **kwargs,
@@ -436,7 +420,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
                 # Check for multiple tracking entries for the same file
                 # not allowed due to constraint of one thread spawned per file
                 _registered_files: typing.List[str] = []
-                if not isinstance((_glob_str := trackable["glob_expr"]), str):
+                if not isinstance((_glob_str := trackable.get("glob_expr")), str):
                     raise AssertionError(
                         f"Expected type AnyStr for globular expression but got '{_glob_str}'"
                     )

@@ -4,7 +4,7 @@ In the situation where the output files from a process are not processable by an
 
 ## File Parsers
 
-File parsers are used for tracking, they take the path of an identified candidate as an argument, parse the data from that file and return a key-value mapping of the data of interest. To create a custom parser you will need to use the `multiparser.parsing.file.file_parser` decorator. The function should take an argument `file_path` which is the file path, and allow an arbitrary number of additional arguments (`**_`) to be compatible with the decorator. It should return either:
+File parsers are used for tracking, they take the path of an identified candidate as an argument, parse the data from that file and return a key-value mapping of the data of interest. To create a custom parser you will need to use the `multiparser.parsing.file.file_parser` decorator. The function should take an argument `input_file` which is the file path, and allow an arbitrary number of additional arguments (`**_`) to be compatible with the decorator. It should return either:
 
     - Two dictionaries containing relevant metadata (usually left blank), and the parsed information: `{...}, {...}`.
     - A single dictionary representing the metadata, and a list of dictionaries (for cases where multiple lines are read in a single parse and these should be kept separate): `{...}, [{...}, ...]`
@@ -14,7 +14,7 @@ from typing import Any
 import multiparser.parsing.file as mp_file_parse
 
 @mp_file_parse.file_parser
-def parse_user_file_type(file_path: str, **_) -> tuple[dict[str, Any], dict[str, Any]]:
+def parse_user_file_type(input_file: str, **_) -> tuple[dict[str, Any], dict[str, Any]]:
     with open(file_path) as in_f:
         file_lines = in_f.readlines()
 
@@ -72,3 +72,31 @@ with multiparser.FileMonitor(timeout=10) as monitor:
 
 In the case where you would like your parser function to accept additional keyword arguments you can add these
 to the definition and pass them to tracking using the `parser_kwargs` argument.
+
+## Class methods as parsers
+
+When custom parsers are decorated any positional and keyword arguments are propagated through, i.e.:
+
+```python
+@log_parser
+def my_parser(a_position_arg, file_content, a_keyword_argument):
+  ...
+```
+
+will be called as:
+
+```python
+my_parser(*args, file_content=file_content, **kwargs)
+```
+
+This allows class methods to also work as custom parsers because `self` is handled correctly:
+
+```python
+class MyClass:
+  def __init__(self):
+    ...
+
+  @log_parser
+  def my_parser(self, file_content):
+    ...
+```

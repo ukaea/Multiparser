@@ -33,6 +33,9 @@ def log_parser(parser: ParserFunction) -> ParserFunction:
     on which file is being passed as well as the last modified time
     for that file.
 
+    This decorator has been designed to work with both functions and
+    class methods.
+
     Parameters
     ----------
     parser : Callable[[str, ...], tuple[dict[str, Any], dict[str, Any]]]
@@ -45,7 +48,7 @@ def log_parser(parser: ParserFunction) -> ParserFunction:
     """
 
     @functools.wraps(parser)
-    def _wrapper(file_content, *args, **kwargs) -> TimeStampedData:
+    def _wrapper(*args, file_content, **kwargs) -> TimeStampedData:
         """Log file parser decorator"""
         if "__read_bytes" not in kwargs:
             raise RuntimeError("Failed to retrieve argument '__read_bytes'")
@@ -59,7 +62,7 @@ def log_parser(parser: ParserFunction) -> ParserFunction:
             "file_name": _input_file,
             "__read_bytes": kwargs["__read_bytes"],
         }
-        _meta, _data = parser(file_content, *args, **kwargs)
+        _meta, _data = parser(*args, file_content=file_content, **kwargs)
         return _meta | _meta_data, _data
 
     _wrapper.__name__ += "__mp_parser"
@@ -228,6 +231,7 @@ def _record_any_delimited(
 
 def record_with_delimiter(
     file_content: str,
+    *,
     delimiter: str,
     headers: list[str] | None = None,
     tracked_values: list[tuple[str | None, re.Pattern[str]]] | None = None,
@@ -269,7 +273,7 @@ def record_with_delimiter(
 
     for file_line in _file_lines:
         _parsed_line: TimeStampedData = _record_any_delimited(
-            file_line,
+            file_content=file_line,
             delimiter=delimiter,
             tracked_values=tracked_values,
             convert=convert,
@@ -342,7 +346,7 @@ def record_csv(
 
     for file_line in _file_lines:
         _parsed_line: TimeStampedData = _record_any_delimited(
-            file_line,
+            file_content=file_line,
             delimiter=",",
             tracked_values=tracked_values,
             convert=convert,
@@ -585,7 +589,7 @@ def record_log(
         # so join lines into single string here, the number of bytes processed
         # is passed into the parser so it is stored
         _parsed_content = parser_func(
-            "".join(_lines),
+            file_content="".join(_lines),
             __input_file=input_file,
             __read_bytes=__read_bytes,
             convert=convert,
@@ -598,11 +602,12 @@ def record_log(
 
     for line in _lines:
         _metadata_line, _processed = _process_log_content(
-            line,
+            file_content=line,
             __input_file=input_file,
             __read_bytes=__read_bytes,
             tracked_values=tracked_values,
             convert=convert,
+            **parser_kwargs
         )
         _data.append(_processed)  # type: ignore
         _metadata = _metadata or _metadata_line

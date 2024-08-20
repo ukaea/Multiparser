@@ -253,3 +253,6 @@ $RECYCLE.BIN/
 .vscode
 *.key
 *.plaintext
+
+# neovim
+.null-ls*
