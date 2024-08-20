@@ -22,6 +22,7 @@ import multiparser.thread as mp_thread
 import multiparser.parsing as mp_parse
 from tests.conftest import fake_feather, fake_json, fake_parquet, fake_pickle, fake_yaml
 from multiparser.parsing.tail import record_with_delimiter as tail_record_delimited
+from multiparser.parsing.file import file_parser
 
 
 DATA_LIBRARY: str = os.path.join(os.path.dirname(__file__), "data")
@@ -213,7 +214,8 @@ def test_custom_data(stage: int, contains: tuple[str, ...]) -> None:
 
     @mp_parse.file_parser
     def _parser_func(
-        input_file: str
+        input_file: str,
+        **_
     ) -> tuple[dict[str, typing.Any], dict[str, typing.Any]]:
         _get_matrix = r"^[(\d+.\d+) *]{16}$"
         _initial_params_regex = r"^([\w_\(\)]+)\s*=\s*(\d+\.*\d*)$"
@@ -317,13 +319,13 @@ def test_parse_log_in_blocks() -> None:
         counter.value += 1
 
     @mp_parse.log_parser
-    def parser_func(file_data: str, **_) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
+    def parser_func(file_content: str, **_) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
         _regex_search_str = r"\s*Data Out\n\s*Result:\ (\d+\.\d+)\n\s*Metric:\ (\d+\.\d+)\n\s*Normalised:\ (\d+\.\d+)\n\s*Accuracy:\ (\d+\.\d+)\n\s*Deviation:\ (\d+\.\d+)"
 
         _parser = re.compile(_regex_search_str, re.MULTILINE)
         _out_data = []
 
-        for match_group in _parser.finditer(file_data):
+        for match_group in _parser.finditer(file_content):
             _out_data += [
                 {f"var_{i}": float(match_group.group(i+1)) for i in range(5)}
             ]
@@ -438,8 +440,9 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
 def test_parse_h5() -> None:
     _data_file: str = os.path.join(DATA_LIBRARY, "example.h5")
 
-    def parser_func(file_name: str):
-        return pandas.read_hdf(file_name, key={"key": "my_group/my_dataset"}).to_dict()
+    @file_parser
+    def parser_func(input_file: str, **_) -> tuple[dict[str, typing.Any, dict[str, typing.Any]]]:
+        return {}, pandas.read_hdf(file_name, key={"key": "my_group/my_dataset"}).to_dict()
 
     with multiparser.FileMonitor(
         per_thread_callback=lambda *_, **__: (),
@@ -500,7 +503,7 @@ def test_custom_parser(style: str) -> None:
     METADATA = {"meta": 2, "demo": "test"}
     DATA = {"a": 2, "b": 3.2, "c": "test"}
     @mp_parse.file_parser
-    def _parser_func(__: str, style=style, **_):
+    def _parser_func(input_file: str, style=style, **_):
         if style == "normal":
             return METADATA, DATA
         elif style == "mixed":

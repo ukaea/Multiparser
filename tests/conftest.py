@@ -164,10 +164,10 @@ def fake_log(request) -> (
             target=_write_dummy_data, args=(_file_name,)
         )
         _process.start()
+        time.sleep(0.1)
         yield {
             "path_glob_exprs": _file_name,
             "tracked_values": (_rand_regex_1, _rand_regex_2),
             "labels": ("var_1", "var_2") if _labels else (None, None)
         }
         _process.join()
-        time.sleep(1)

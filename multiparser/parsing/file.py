@@ -56,6 +56,9 @@ def file_parser(parser: typing.Callable) -> typing.Callable:
     on which file is being passed as well as the last modified time
     for that file.
 
+    This decorator has been designed to work with both functions and
+    class methods.
+
     Parameters
     ----------
     parser : typing.Callable
@@ -68,9 +71,9 @@ def file_parser(parser: typing.Callable) -> typing.Callable:
     """
 
     @functools.wraps(parser)
-    def _wrapper(input_file: str, *args, **kwargs) -> TimeStampedData:
+    def _wrapper(*args, input_file: str, **kwargs) -> TimeStampedData:
         """Full file parser decorator"""
-        _data: TimeStampedData = parser(input_file, *args, **kwargs)
+        _data: TimeStampedData = parser(*args, input_file=input_file, **kwargs)
         _meta_data: typing.Dict[str, str] = {
             "timestamp": datetime.datetime.fromtimestamp(
                 os.path.getmtime(input_file)
@@ -196,9 +199,9 @@ def _full_file_parse(parse_func, in_file, tracked_values, **parser_kwargs) -> Ti
 def record_file(
     input_file: str,
     *,
-    tracked_values: typing.List[re.Pattern[str]] | None = None,
-    parser_func: typing.Callable | None = None,
-    file_type: str | None = None,
+    tracked_values: typing.List[re.Pattern[str]] | None,
+    parser_func: typing.Callable | None,
+    file_type: str | None,
     **parser_kwargs
 ) -> TimeStampedData:
     """Record a recognised file, parsing its contents.
@@ -246,3 +249,15 @@ def record_file(
         f"The file extension '{_extension}' for file '{input_file}' is not supported for 'record_file' without custom parsing"
     )
     raise TypeError(f"File of type '{_extension}' could not be recognised")
+
+
+record_toml.__skip_validation = True
+record_csv.__skip_validation = True
+record_json.__skip_validation = True
+record_yaml.__skip_validation = True
+record_feather.__skip_validation = True
+record_pickle.__skip_validation = True
+record_parquet.__skip_validation = True
+record_fortran_nml.__skip_validation = True
+record_file.__skip_validation = True
+

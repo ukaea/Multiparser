@@ -24,7 +24,9 @@ import multiprocessing
 import re
 import string
 import sys
+import tempfile
 import threading
+import inspect
 import time
 import typing
 from multiprocessing.synchronize import Event
@@ -267,13 +269,22 @@ class FileMonitor:
         if hasattr(parser, "__skip_validation"):
             return
 
+        _func_signature = inspect.signature(parser)
+        _parameters = list(_func_signature.parameters.values())
+
+        if not "file_content" in (p.name for p in _parameters):
+            raise AssertionError(
+                f"Expected keyword argument 'file_content' in definition of parser function '{parser.__name__}'"
+            )
+
         _test_str = string.ascii_lowercase
         _test_str += string.ascii_uppercase
         _test_str += string.ascii_letters
         _test_str *= 100
         try:
+            # Parsers are expected to have the keyword argument 'file_content'
             _out = parser(
-                _test_str, __input_file=__file__, __read_bytes=None, **parser_kwargs
+                file_content=_test_str, __input_file=__file__, __read_bytes=None, **parser_kwargs
             )
 
             # If the custom parser returns a list of entries, not just one
@@ -281,7 +292,7 @@ class FileMonitor:
                 _out = _out[0]
 
         except Exception as e:
-            raise AssertionError(f"Custom parser testing failed with exception:\n{e}")
+            raise AssertionError(f"Custom parser testing failed for '{parser.__name__}' with exception:\n{e}")
 
         if (
             len(_out) != 2
@@ -289,7 +300,7 @@ class FileMonitor:
             or not isinstance(_out[1], (list, dict))
         ):
             raise AssertionError(
-                "Parser function must return two objects, a metadata dictionary and parsed values"
+                f"Parser function '{parser.__name__}' must return two objects, a metadata dictionary and parsed values"
                 " in the form of a dictionary or list of dictionaries"
             )
 
@@ -297,7 +308,8 @@ class FileMonitor:
         # is decorated, either should add timestamp information
         if not parser.__name__.endswith("__mp_parser") and "timestamp" not in _out[0]:
             raise AssertionError(
-                "Parser function must be decorated using the multiparser.log_parser decorator"
+                f"Parser function '{parser.__name__}' must be decorated using the "
+                "multiparser.log_parser decorator"
             )
 
     def exclude(self, path_glob_exprs: typing.List[str] | str) -> None:
@@ -357,6 +369,21 @@ class FileMonitor:
             if using "lazy" parsing override the suffix based file type
             recognition with a recognised parser e.g. 'yaml'
         """
+
+        if parser_func:
+            _parameters = list(inspect.signature(parser_func).parameters.values())
+            if not "input_file" in (p.name for p in _parameters):
+                raise AssertionError(
+                    f"Expected keyword argument 'input_file' in definition of parser function '{parser_func.__name__}'"
+                )
+            # Either the parser itself is decorated, or a function it calls to create the parsed data
+            # is decorated, either should add timestamp information
+            if not parser_func.__name__.endswith("__mp_parser") and "timestamp" not in _out[0]:
+                raise AssertionError(
+                    f"Parser function '{parser_func.__name__}' must be decorated using the "
+                    "multiparser.file_parser decorator"
+                )
+
         if isinstance(path_glob_exprs, str):
             _parsing_dict: typing.Dict[str, typing.Any] = {
                 "glob_expr": path_glob_exprs,
@@ -388,6 +415,7 @@ class FileMonitor:
                 raise AssertionError("Globular expression must be of type AnyStr")
             glob.glob(_glob_ex)
 
+
     def tail(
         self,
         *,
@@ -408,26 +436,26 @@ class FileMonitor:
         Capture groups for the regular expressions defining the values
         to monitor can have two forms:
 
-        * A single regular expression group, e.g. re.compile(r'\d+')
-          or re.compile(r'(\d+)') with a name present in 'labels',
+        * A single regular expression group, e.g. re.compile(r'\\d+')
+          or re.compile(r'(\\d+)') with a name present in 'labels',
           e.g. "my_var".
 
           ```python
           tail(
-            tracked_values=[re.compile(r'(\d+),'), re.compile(r'\d\.\d+')],
+            tracked_values=[re.compile(r'(\\d+),'), re.compile(r'\\d\\.\\d+')],
             labels=['my_var', 'other']
           )
           ```
 
-        * A double regular expression group, e.g. re.compile(r'(\w+\_var)=(\d+)')
+        * A double regular expression group, e.g. re.compile(r'(\\w+\\_var)=(\\d+)')
           where the first group is the label, and the second the value.
 
           ```python
-          tail(tracked_values=[re.compile(r'(\w+\_var)=(\d+)']))
+          tail(tracked_values=[re.compile(r'(\\w+\\_var)=(\\d+)']))
           tail(
             tracked_values=[
-                re.compile(r'(\w+\_var)=(\d+)'),
-                re.compile(r'(\w+\_i=(\d+)')
+                re.compile(r'(\\w+\\_var)=(\\d+)'),
+                re.compile(r'(\\w+\\_i=(\\d+)')
             ]
           )
           ```
@@ -435,11 +463,11 @@ class FileMonitor:
           This can be overwritten by providing a value for that group.
 
           ```python
-          tail(tracked_values=[re.compile(r'(\w+\_var)=(\d+)']))
+          tail(tracked_values=[re.compile(r'(\\w+\\_var)=(\\d+)']))
           tail(
             tracked_values=[
-                re.compile(r'(\w+\_var)=(\d+)'),
-                re.compile(r'(\w+\_i=(\d+)')
+                re.compile(r'(\\w+\\_var)=(\\d+)'),
+                re.compile(r'(\\w+\\_i=(\\d+)')
             ],
             labels=['my_var', None]
           )
@@ -515,6 +543,10 @@ class FileMonitor:
                 (label, reg_ex) for label, reg_ex in zip(_labels, _tracked_values)
             ]
 
+        if skip_lines_w_pattern:
+            parser_kwargs = parser_kwargs or {}
+            parser_kwargs["ignore_lines"] = skip_lines_w_pattern
+
         if isinstance(path_glob_exprs, (str, re.Pattern)):
             _parsing_dict: typing.Dict[str, typing.Any] = {
                 "glob_expr": path_glob_exprs,
@@ -523,7 +555,6 @@ class FileMonitor:
                 "parser_func": parser_func,
                 "parser_kwargs": parser_kwargs,
                 "callback": callback or self._per_thread_callback,
-                "ignore_lines": skip_lines_w_pattern,
             }
             self._log_trackables.append(_parsing_dict)
         else:
@@ -535,7 +566,6 @@ class FileMonitor:
                     "parser_func": parser_func,
                     "parser_kwargs": parser_kwargs,
                     "callback": callback or self._per_thread_callback,
-                    "ignore_lines": skip_lines_w_pattern,
                 }
                 for g in path_glob_exprs
             ]
