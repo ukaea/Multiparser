@@ -11,6 +11,7 @@ from conftest import fake_csv, fake_feather, fake_nml, fake_toml
 
 import multiparser.parsing as mp_parse
 from multiparser.parsing.file import (
+    file_parser,
     record_csv as file_record_csv,
     record_fortran_nml,
     record_feather,

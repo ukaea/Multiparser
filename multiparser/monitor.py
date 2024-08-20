@@ -277,6 +277,14 @@ class FileMonitor:
                 f"Expected keyword argument 'file_content' in definition of parser function '{parser.__name__}'"
             )
 
+        # The function must have **_ or **kwargs in the definition, this allows passing of internal
+        # parameters prefixed with '__'
+        if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in _parameters):
+            raise AssertionError(
+                f"Function '{parser.__name__}' must allow arbitrary number of keyword arguments, "
+                "i.e. use '**_'"
+            )
+
         _test_str = string.ascii_lowercase
         _test_str += string.ascii_uppercase
         _test_str += string.ascii_letters
@@ -378,10 +386,19 @@ class FileMonitor:
                 )
             # Either the parser itself is decorated, or a function it calls to create the parsed data
             # is decorated, either should add timestamp information
-            if not parser_func.__name__.endswith("__mp_parser") and "timestamp" not in _out[0]:
+            if not parser_func.__name__.endswith("__mp_parser"):
                 raise AssertionError(
                     f"Parser function '{parser_func.__name__}' must be decorated using the "
                     "multiparser.file_parser decorator"
+                )
+
+            # The function must have **_ or **kwargs in the definition, this allows passing of internal
+            # parameters prefixed with '__'
+            print([p.kind for p in _parameters])
+            if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in _parameters):
+                raise AssertionError(
+                    f"Function '{parser_func.__name__}' must allow arbitrary number of keyword arguments, "
+                    "i.e. use '**_'"
                 )
 
         if isinstance(path_glob_exprs, str):
