@@ -72,3 +72,31 @@ with multiparser.FileMonitor(timeout=10) as monitor:
 
 In the case where you would like your parser function to accept additional keyword arguments you can add these
 to the definition and pass them to tracking using the `parser_kwargs` argument.
+
+## Class methods as parsers
+
+When custom parsers are decorated any positional and keyword arguments are propagated through, i.e.:
+
+```python
+@log_parser
+def my_parser(a_position_arg, file_content, a_keyword_argument):
+  ...
+```
+
+will be called as:
+
+```python
+my_parser(*args, file_content=file_content, **kwargs)
+```
+
+This allows class methods to also work as custom parsers because `self` is handled correctly:
+
+```python
+class MyClass:
+  def __init__(self):
+    ...
+
+  @log_parser
+  def my_parser(self, file_content):
+    ...
+```
