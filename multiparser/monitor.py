@@ -24,7 +24,6 @@ import multiprocessing
 import re
 import string
 import sys
-import tempfile
 import threading
 import inspect
 import time
@@ -272,7 +271,7 @@ class FileMonitor:
         _func_signature = inspect.signature(parser)
         _parameters = list(_func_signature.parameters.values())
 
-        if not "file_content" in (p.name for p in _parameters):
+        if "file_content" not in (p.name for p in _parameters):
             raise AssertionError(
                 f"Expected keyword argument 'file_content' in definition of parser function '{parser.__name__}'"
             )
@@ -380,7 +379,7 @@ class FileMonitor:
 
         if parser_func:
             _parameters = list(inspect.signature(parser_func).parameters.values())
-            if not "input_file" in (p.name for p in _parameters):
+            if "input_file" not in (p.name for p in _parameters):
                 raise AssertionError(
                     f"Expected keyword argument 'input_file' in definition of parser function '{parser_func.__name__}'"
                 )
