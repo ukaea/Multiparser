@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ukaea-multiparser"
-version = "1.0.1"
+version = "1.0.2"
 description = "Multiple File Parser for monitoring and processing updates to a given set of output files."
 authors = ["Kristian Zarębski <kristian.zarebski@ukaea.uk>"]
 classifiers = [

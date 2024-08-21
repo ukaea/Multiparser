@@ -1,3 +1,9 @@
+# 2023-08-21 [v1.0.2](https://github.com/ukaea/Multiparser/releases/tag/v1.0.2)
+
+* Added support for parser keyword arguments in file parsers.
+* Added additional custom parser checking.
+* Added support for both positional and keyword argument propagation allowing parsers to be created from class methods.
+
 # 2023-03-26 [v1.0.1](https://github.com/ukaea/Multiparser/releases/tag/v1.0.1)
 
 * Fixed broken tail parsers due to incorrect handling of outputs.
