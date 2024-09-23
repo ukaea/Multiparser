@@ -393,7 +393,6 @@ class FileMonitor:
 
             # The function must have **_ or **kwargs in the definition, this allows passing of internal
             # parameters prefixed with '__'
-            print([p.kind for p in _parameters])
             if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in _parameters):
                 raise AssertionError(
                     f"Function '{parser_func.__name__}' must allow arbitrary number of keyword arguments, "
