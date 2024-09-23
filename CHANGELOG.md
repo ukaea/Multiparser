@@ -1,3 +1,8 @@
+
+# 2023-09-23 [v1.0.3](https://github.com/ukaea/Multiparser/releases/tag/v1.0.3)
+
+* Removed unneeded parameter printout in `monitor.py`.
+
 # 2023-08-21 [v1.0.2](https://github.com/ukaea/Multiparser/releases/tag/v1.0.2)
 
 * Added support for parser keyword arguments in file parsers.
