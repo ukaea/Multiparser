@@ -431,7 +431,7 @@ class FileMonitor:
             glob.glob(_glob_ex)
 
 
-    def tail(
+    def tail( # noqa: C901
         self,
         *,
         path_glob_exprs: typing.List[str] | str,
