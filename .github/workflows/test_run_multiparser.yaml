@@ -1,5 +1,8 @@
 name: multiparser
 on: [push]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   unit_tests:
     name: Unit Tests (${{ matrix.os }} Python${{ matrix.python-version }})
@@ -8,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [ '3.10', '3.11', '3.12' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python

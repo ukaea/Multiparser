@@ -2634,5 +2634,5 @@ fortran = ["f90nml"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.10,<3.13"
-content-hash = "015f44e8c88e75ad6618dcad215090d942515d100032c03d344dfa92f5f30140"
+python-versions = "^3.10,<3.14"
+content-hash = "13a7fc535e13fb91c65bb4fa180bbf8755118a566302911512a65d7c44070919"
