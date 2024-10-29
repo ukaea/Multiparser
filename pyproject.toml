@@ -13,6 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: System :: Monitoring",
     "Typing :: Typed"
 ]
@@ -33,12 +34,15 @@ Issues = "https://github.com/ukaea/Multiparser/issues"
 "Change Log" = "https://github.com/ukaea/Multiparser/blob/main/CHANGELOG.md"
 
 [tool.poetry.dependencies]
-python = "^3.10,<3.13"
+python = "^3.10,<3.14"
 f90nml = {version = "^1.4.3", optional = true}
 pandas = {version = "^2.1.1", optional = true}
 toml = "^0.10.2"
 pyyaml = "^6.0.1"
-pyarrow = {version = ">=14,<19", optional = true}
+pyarrow = [
+  {version = ">=14,<18", optional = true, python="<3.13"},
+  {version = ">=18", optional = true, python=">=3.13"},
+]
 flatdict = "^4.0.1"
 loguru = "^0.7.2"
 

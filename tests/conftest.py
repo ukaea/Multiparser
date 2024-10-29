@@ -32,7 +32,11 @@ def fake_csv(output_dir: str, file_name: str | None = None) -> str:
     return _file_name
 
 
-def fake_feather(output_dir: str, file_name: str | None = None) -> str:
+def fake_feather(output_dir: str, file_name: str | None = None) -> str | None:
+    try:
+        import pyarrow
+    except ImportError:
+        return None
     _file_name: str = file_name or os.path.join(output_dir, rand_str() + ".ft")
     pandas.DataFrame(
         {rand_str(): [random.randint(0, 100) for _ in range(100)]}
@@ -41,6 +45,10 @@ def fake_feather(output_dir: str, file_name: str | None = None) -> str:
 
 
 def fake_parquet(output_dir: str, file_name: str | None = None) -> str:
+    try:
+        import pyarrow
+    except ImportError:
+        return None
     _file_name: str = file_name or os.path.join(output_dir, rand_str() + ".pqt")
     pandas.DataFrame(
         {rand_str(): [random.randint(0, 100) for _ in range(100)]}
@@ -84,7 +92,11 @@ def fake_pickle(output_dir: str, file_name: str | None = None) -> str:
     return _file_name
 
 
-def fake_nml(*_, **__) -> str:
+def fake_nml(*_, **__) -> str | None:
+    try:
+        import f90nml
+    except ImportError:
+        return None
     _file_name: str = os.path.join(DATA_DIR, "example.nml")
     return _file_name
 
