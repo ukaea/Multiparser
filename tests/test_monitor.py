@@ -20,7 +20,8 @@ import multiparser
 import multiparser.exceptions as mp_exc
 import multiparser.thread as mp_thread
 import multiparser.parsing as mp_parse
-from tests.conftest import fake_feather, fake_json, fake_parquet, fake_pickle, fake_yaml
+
+from tests.conftest import fake_json, fake_parquet, fake_pickle, fake_yaml, fake_feather
 from multiparser.parsing.tail import log_parser, record_with_delimiter as tail_record_delimited
 from multiparser.parsing.file import file_parser
 
@@ -85,18 +86,21 @@ def test_run_on_directory_all(
     fake_log, exception: str | None, mocker: pytest_mock.MockerFixture, lock: bool, flatten: bool
 ) -> None:
     _interval: float = 0.1
-    _fakers: tuple[typing.Callable, ...] = (
+    _fakers: tuple[typing.Callable, ...] = [
         fake_csv,
         fake_nml,
         fake_toml,
-        fake_feather,
         fake_json,
         fake_yaml,
         fake_pickle,
-        fake_parquet
-    )
+        fake_parquet,
+        fake_feather
+    ]
+
     with tempfile.TemporaryDirectory() as temp_d:
         for faker in _fakers:
+            if not faker:
+                continue
             faker(temp_d)
         for _ in range(8):
             random.choice(_fakers)(temp_d)

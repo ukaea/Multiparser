@@ -39,7 +39,10 @@ f90nml = {version = "^1.4.3", optional = true}
 pandas = {version = "^2.1.1", optional = true}
 toml = "^0.10.2"
 pyyaml = "^6.0.1"
-pyarrow = {version = ">=14,<18", optional = true}
+pyarrow = [
+  {version = ">=14,<18", optional = true, python="<3.13"},
+  {version = ">=18", optional = true, python=">=3.13"},
+]
 flatdict = "^4.0.1"
 loguru = "^0.7.2"
 
