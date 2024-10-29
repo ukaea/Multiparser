@@ -1,4 +1,8 @@
 
+# 2023-09-23 [v1.0.4](https://github.com/ukaea/Multiparser/releases/tag/v1.0.4)
+
+* Support Python3.13 using `pyarrow>=18`
+
 # 2023-09-23 [v1.0.3](https://github.com/ukaea/Multiparser/releases/tag/v1.0.3)
 
 * Removed unneeded parameter printout in `monitor.py`.
