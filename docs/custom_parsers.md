@@ -40,7 +40,7 @@ to the definition and pass them to tracking using the `parser_kwargs` argument.
 
 !!! warning "Empty Data"
     The `per_thread_callback` of `FileMonitor` only executes when new data is parsed from a modified file,
-not when the file is marked as modified. Therefore a custom parser which either does not return data, or
+    not when the file is marked as modified. Therefore a custom parser which either does not return data, or
     returns explicitly an empty dictionary will never trigger the `per_thread_callback` method.
 
 ## Log Parsers
@@ -108,5 +108,5 @@ class MyClass:
 
 !!! warning "Empty Data"
     The `per_thread_callback` of `FileMonitor` only executes when new data is parsed from a modified file,
-not when the file is marked as modified. Therefore a custom parser which either does not return data, or
+    not when the file is marked as modified. Therefore a custom parser which either does not return data, or
     returns explicitly an empty dictionary will never trigger the `per_thread_callback` method.
