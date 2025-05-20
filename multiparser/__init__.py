@@ -27,7 +27,7 @@ except importlib.metadata.PackageNotFoundError:
         pathlib.Path(os.path.dirname(__file__)).parents[1], "pyproject.toml"
     )
     if os.path.exists(_metadata):
-        __version__ = toml.load(_metadata)["tool"]["poetry"]["version"]
+        __version__ = toml.load(_metadata)["project"]["version"]
     else:
         __version__ = ""
 
