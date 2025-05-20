@@ -1,8 +1,8 @@
 # Development
 
-## Using Poetry
+## Using UV
 
-The _Multiparser_ repository makes use of the [Poetry](https://python-poetry.org/) which is a pip-installable dependency management and virtual environment tool for assisting development, and recommended when contributing to the project. The included `poetry.lock` file provides a shareable virtual environment definition. Poetry is able to resolve dependency versions to ensure cross-compatibility.
+The _Multiparser_ repository makes use of the [UV](https://docs.astral.sh/uv/) which is a pip-installable dependency management and virtual environment tool for assisting development, and recommended when contributing to the project. The included `uv.lock` file provides a shareable virtual environment definition. UV is able to resolve dependency versions to ensure cross-compatibility.
 
 ## Pre-commit
 
@@ -22,8 +22,8 @@ pre-commit run --all
 
 _Multiparser_ follows the Numpy docstring convention for outlining function and class parameters and return types.
 
-Included within the git hooks is the docstring coverage check tool [_interrogate_](https://pypi.org/project/interrogate/) which checks whether all functions within the `multiparser` module have been documented. The tool can be run in isolation using Poetry:
+Included within the git hooks is the docstring coverage check tool [_interrogate_](https://pypi.org/project/interrogate/) which checks whether all functions within the `multiparser` module have been documented. The tool can be run in isolation using UV:
 
 ```sh
-poetry run interrogate
+uv run interrogate
 ```
