@@ -2,62 +2,50 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://ukaea.github.io/multiparser/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/basic_example/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/builtin_parsers/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/custom_parsers/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/development/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/examples/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/file_monitor/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/how_it_works/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/installation/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/tailing/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/tracking/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://ukaea.github.io/multiparser/tracking_and_tailing/</loc>
-         <lastmod>2024-03-25</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2025-05-20</lastmod>
     </url>
 </urlset>
