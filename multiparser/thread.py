@@ -315,7 +315,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         parser_func: typing.Callable | None = None,
         file_type: str | None = None,
         glob_expr: str | None = None,
-        **parser_kwargs
+        **parser_kwargs,
     ) -> None:
         """Create a new thread for a monitored file
 
@@ -366,11 +366,11 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
 
                     _modified_time_stamp = os.path.getmtime(file_name)
                     _modified_time = datetime.datetime.fromtimestamp(
-                        _modified_time_stamp
-                    ).strftime("%Y-%M-%d %H:%M:%S.%f")
+                        timestamp=_modified_time_stamp, tz=datetime.timezone.utc
+                    )
 
                     # If the file has not been modified then we do not need to parse it
-                    if (_modified_time, file_name) in records:
+                    if (f"{_modified_time}", file_name) in records:
                         continue
                     _cached_metadata = _reparse_action(
                         file_type=file_type,
@@ -382,11 +382,11 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
                         lock=self._lock,
                         flatten_data=flatten_data,
                         cached_metadata=_cached_metadata,
-                        modified_time=_modified_time,
+                        modified_time=f"{_modified_time}",
                         **kwargs,
                     )
 
-                    records.append((_modified_time, file_name))
+                    records.append((f"{_modified_time}", file_name))
 
                     # If only a single read is required terminate loop
                     if static_read:

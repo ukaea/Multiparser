@@ -54,10 +54,11 @@ def log_parser(parser: ParserFunction) -> ParserFunction:
             raise RuntimeError("Failed to retrieve argument '__read_bytes'")
         if not (_input_file := kwargs.get("__input_file")):
             raise RuntimeError("Failed to retrieve argument '__input_file'")
+        _time_stamp = datetime.datetime.fromtimestamp(
+            timestamp=os.path.getmtime(_input_file), tz=datetime.timezone.utc
+        )
         _meta_data: dict[str, str] = {
-            "timestamp": datetime.datetime.fromtimestamp(
-                os.path.getmtime(_input_file)
-            ).strftime("%Y-%m-%d %H:%M:%S.%f"),
+            "timestamp": f"{_time_stamp}",
             "hostname": platform.node(),
             "file_name": _input_file,
             "__read_bytes": kwargs["__read_bytes"],
@@ -607,7 +608,7 @@ def record_log(
             __read_bytes=__read_bytes,
             tracked_values=tracked_values,
             convert=convert,
-            **parser_kwargs
+            **parser_kwargs,
         )
         _data.append(_processed)  # type: ignore
         _metadata = _metadata or _metadata_line
