@@ -315,7 +315,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         parser_func: typing.Callable | None = None,
         file_type: str | None = None,
         glob_expr: str | None = None,
-        **parser_kwargs
+        **parser_kwargs,
     ) -> None:
         """Create a new thread for a monitored file
 
@@ -356,41 +356,46 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
 
             _cached_metadata: typing.Dict[str, str | int] = {}
 
+            def _execute_parse() -> None:
+                time.sleep(interval)
+
+                # If the file does not exist yet then continue
+                if not os.path.exists(file_name):
+                    return
+
+                _modified_time_stamp = os.path.getmtime(file_name)
+                _modified_time = datetime.datetime.fromtimestamp(
+                    _modified_time_stamp
+                ).strftime("%Y-%M-%d %H:%M:%S.%f")
+
+                # If the file has not been modified then we do not need to parse it
+                if (_modified_time, file_name) in records:
+                    return
+
+                _cached_metadata = _reparse_action(
+                    file_type=file_type,
+                    file_name=file_name,
+                    cstm_parser=cstm_parser,
+                    monitor_callback=monitor_callback,
+                    parsing_callback=parsing_callback,
+                    tracked_vals=tracked_vals,
+                    lock=self._lock,
+                    flatten_data=flatten_data,
+                    cached_metadata=_cached_metadata,
+                    modified_time=_modified_time,
+                    **kwargs,
+                )
+
+                records.append((_modified_time, file_name))
+
             try:
                 while not termination_trigger.is_set():
-                    time.sleep(interval)
-
-                    # If the file does not exist yet then continue
-                    if not os.path.exists(file_name):
-                        continue
-
-                    _modified_time_stamp = os.path.getmtime(file_name)
-                    _modified_time = datetime.datetime.fromtimestamp(
-                        _modified_time_stamp
-                    ).strftime("%Y-%M-%d %H:%M:%S.%f")
-
-                    # If the file has not been modified then we do not need to parse it
-                    if (_modified_time, file_name) in records:
-                        continue
-                    _cached_metadata = _reparse_action(
-                        file_type=file_type,
-                        file_name=file_name,
-                        cstm_parser=cstm_parser,
-                        monitor_callback=monitor_callback,
-                        parsing_callback=parsing_callback,
-                        tracked_vals=tracked_vals,
-                        lock=self._lock,
-                        flatten_data=flatten_data,
-                        cached_metadata=_cached_metadata,
-                        modified_time=_modified_time,
-                        **kwargs,
-                    )
-
-                    records.append((_modified_time, file_name))
-
+                    _execute_parse()
                     # If only a single read is required terminate loop
                     if static_read:
                         break
+                # Execute once more on termination
+                _execute_parse()
             except Exception as e:
                 loguru.logger.error(
                     f"{type(e).__name__} exception raised on thread during parsing of file '{file_name}': {e}"
