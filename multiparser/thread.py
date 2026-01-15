@@ -355,9 +355,13 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
             """Thread target function for parsing of detected file"""
 
             _cached_metadata: typing.Dict[str, str | int] = {}
-
+            _final_read = False
             try:
-                while not termination_trigger.is_set():
+                while not (termination_trigger.is_set() and _final_read):
+                    
+                    if termination_trigger.is_set():
+                        _final_read = True
+                        
                     time.sleep(interval)
 
                     # If the file does not exist yet then continue
