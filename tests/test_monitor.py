@@ -759,7 +759,7 @@ def test_monitor_slow_callback():
 
             # Write the header row
             writer.writeheader()
-            for i in range(5):
+            for i in range(20):
                 # Write data rows
                 writer.writerow({"number": i})
                 file.flush()
@@ -769,10 +769,10 @@ def test_monitor_slow_callback():
                 
     def callback(data: dict, *_):
         RECORDED_DATA.append(data)
+        time.sleep(1)
         
     with tempfile.TemporaryDirectory() as tempd:
         results_path = pathlib.Path(tempd).joinpath("results.csv")
-        results_path.unlink(missing_ok=True)
             
         thread = threading.Thread(target=write_rows, args=(results_path,))
                 
@@ -787,5 +787,6 @@ def test_monitor_slow_callback():
                 callback=callback,
             )
             monitor.run()
-            
-        assert len(RECORDED_DATA) == 5
+                
+    assert len(RECORDED_DATA) == 20
+        
