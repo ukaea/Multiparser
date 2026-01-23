@@ -4,11 +4,15 @@ import os
 import random
 import re
 import tempfile
+import pathlib
 import time
 import typing
 import dataclasses
+<<<<<<< HEAD
 import pathlib
 import threading
+=======
+>>>>>>> 9dceaf26a95801c1bff61aa0985b51abcd433eab
 import csv
 import pandas
 import pytest
@@ -16,6 +20,7 @@ import pytest_mock
 import multiprocessing
 import toml
 import xeger
+import threading
 from conftest import fake_csv, fake_nml, fake_toml, to_nml
 
 import multiparser
@@ -33,32 +38,26 @@ XEGER_SEED: int = 10
 
 
 @pytest.mark.monitor
-@pytest.mark.parametrize(
-    "fail", (True, False),
-    ids=("fail", "pass")
-)
+@pytest.mark.parametrize("fail", (True, False), ids=("fail", "pass"))
 def test_globex_check(fail: bool) -> None:
     if not fail:
         with multiparser.FileMonitor(
             lambda *_: None,
             log_level=logging.INFO,
             terminate_all_on_fail=True,
-            timeout=2
+            timeout=2,
         ) as monitor:
-            monitor.track(
-                path_glob_exprs=["files*"]
-            )
+            monitor.track(path_glob_exprs=["files*"])
     else:
         with pytest.raises(AssertionError):
             with multiparser.FileMonitor(
-            lambda *_: None,
+                lambda *_: None,
                 log_level=logging.INFO,
                 terminate_all_on_fail=True,
-                timeout=2
+                timeout=2,
             ) as monitor:
-                monitor.track(
-                    path_glob_exprs=[10]
-                )
+                monitor.track(path_glob_exprs=[10])
+
 
 @pytest.mark.monitor
 @pytest.mark.parametrize(
@@ -70,22 +69,19 @@ def test_globex_check(fail: bool) -> None:
         None,
     ),
 )
+@pytest.mark.parametrize("lock", (True, False), ids=("lock", "no_lock"))
+@pytest.mark.parametrize("flatten", (True, False), ids=("flatten_data", "no_flatten"))
 @pytest.mark.parametrize(
-    "lock", (True, False),
-    ids=("lock", "no_lock")
-)
-@pytest.mark.parametrize(
-    "flatten", (True, False),
-    ids=("flatten_data", "no_flatten")
-)
-@pytest.mark.parametrize(
-    "fake_log", [
-        (True, None)
-    ],
+    "fake_log",
+    [(True, None)],
     indirect=True,
 )
 def test_run_on_directory_all(
-    fake_log, exception: str | None, mocker: pytest_mock.MockerFixture, lock: bool, flatten: bool
+    fake_log,
+    exception: str | None,
+    mocker: pytest_mock.MockerFixture,
+    lock: bool,
+    flatten: bool,
 ) -> None:
     _interval: float = 0.1
     _fakers: tuple[typing.Callable, ...] = [
@@ -96,14 +92,13 @@ def test_run_on_directory_all(
         fake_yaml,
         fake_pickle,
         fake_parquet,
-        fake_feather
+        fake_feather,
     ]
 
     with tempfile.TemporaryDirectory() as temp_d:
         for faker in _fakers:
-            if not faker:
+            if not faker(temp_d):
                 continue
-            faker(temp_d)
         for _ in range(8):
             random.choice(_fakers)(temp_d)
 
@@ -134,10 +129,14 @@ def test_run_on_directory_all(
                     log_level=logging.INFO,
                     lock_callbacks=lock,
                     flatten_data=flatten,
-                    terminate_all_on_fail=True
+                    terminate_all_on_fail=True,
                 ) as monitor:
-                    monitor._file_thread_exception_test_case = exception == "file_monitor_thread_exception"
-                    monitor._log_thread_exception_test_case = exception == "log_monitor_thread_exception"
+                    monitor._file_thread_exception_test_case = (
+                        exception == "file_monitor_thread_exception"
+                    )
+                    monitor._log_thread_exception_test_case = (
+                        exception == "log_monitor_thread_exception"
+                    )
                     monitor.track(path_glob_exprs=os.path.join(temp_d, "*"))
                     monitor.exclude(os.path.join(temp_d, "*.toml"))
                     monitor.tail(**fake_log)
@@ -150,7 +149,7 @@ def test_run_on_directory_all(
                 per_thread_callback,
                 interval=_interval,
                 log_level=logging.INFO,
-                terminate_all_on_fail=True
+                terminate_all_on_fail=True,
             ) as monitor:
                 monitor.track(path_glob_exprs=os.path.join(temp_d, "*"))
                 monitor.exclude(os.path.join(temp_d, "*.toml"))
@@ -159,7 +158,6 @@ def test_run_on_directory_all(
                 for _ in range(10):
                     time.sleep(_interval)
                 monitor.terminate()
-            
 
 
 @pytest.mark.monitor
@@ -198,11 +196,19 @@ def test_run_on_directory_filtered() -> None:
             per_thread_callback,
             interval=_interval,
             flatten_data=True,
-            terminate_all_on_fail=True
+            terminate_all_on_fail=True,
         ) as monitor:
-            monitor.track(path_glob_exprs=_csv_file, tracked_values=["d_other", re.compile("\w_value")])
-            monitor.track(path_glob_exprs=_nml_file, tracked_values=[re.compile("\w_val_\w")])
-            monitor.track(path_glob_exprs=_toml_file, tracked_values=["input_swe", re.compile(r"input_\d")])
+            monitor.track(
+                path_glob_exprs=_csv_file,
+                tracked_values=["d_other", re.compile("\\w_value")],
+            )
+            monitor.track(
+                path_glob_exprs=_nml_file, tracked_values=[re.compile("\\w_val_\\w")]
+            )
+            monitor.track(
+                path_glob_exprs=_toml_file,
+                tracked_values=["input_swe", re.compile(r"input_\d")],
+            )
             monitor.run()
             for _ in range(10):
                 time.sleep(_interval)
@@ -220,8 +226,7 @@ def test_custom_data(stage: int, contains: tuple[str, ...]) -> None:
 
     @mp_parse.file_parser
     def _parser_func(
-        input_file: str,
-        **_
+        input_file: str, **_
     ) -> tuple[dict[str, typing.Any], dict[str, typing.Any]]:
         _get_matrix = r"^[(\d+.\d+) *]{16}$"
         _initial_params_regex = r"^([\w_\(\)]+)\s*=\s*(\d+\.*\d*)$"
@@ -270,7 +275,7 @@ def test_custom_data(stage: int, contains: tuple[str, ...]) -> None:
         _validation_callback,
         interval=0.1,
         log_level=logging.DEBUG,
-        terminate_all_on_fail=True
+        terminate_all_on_fail=True,
     ) as monitor:
         monitor.track(
             path_glob_exprs=_file,
@@ -286,27 +291,34 @@ def test_custom_data(stage: int, contains: tuple[str, ...]) -> None:
 @pytest.mark.parsing
 def test_parse_log_in_blocks() -> None:
     _refresh_interval: float = 0.1
-    _expected = [{f"var_{i}": random.random() * 10 for i in range(5)} for _ in range(10)]
+    _expected = [
+        {f"var_{i}": random.random() * 10 for i in range(5)} for _ in range(10)
+    ]
     _xeger = xeger.Xeger(seed=XEGER_SEED)
     _file_blocks = []
     _gen_ignore_pattern = r"<!--ignore-this-\w+-\d+-->"
     _gen_rgx = r"\w+: \d+\.\d+"
     _file_blocks += [
-        [_xeger.xeger(_gen_rgx)+"\n"] +
-        [_xeger.xeger(_gen_rgx)+ "\n"] +
-        [_xeger.xeger(_gen_rgx)+"\n"] +
-        [_xeger.xeger(_gen_rgx)+"\n"] +
-        [_xeger.xeger(_gen_ignore_pattern)+"\n"] +
-        ["\tData Out\n"] +
-        [f"\tResult: {i['var_0']}\n"] +
-        [f"\tMetric: {i['var_1']}\n"] +
-        [f"\tNormalised: {i['var_2']}\n"] +
-        [f"\tAccuracy: {i['var_3']}\n"] +
-        [f"\tDeviation: {i['var_4']}\n"]
+        [_xeger.xeger(_gen_rgx) + "\n"]
+        + [_xeger.xeger(_gen_rgx) + "\n"]
+        + [_xeger.xeger(_gen_rgx) + "\n"]
+        + [_xeger.xeger(_gen_rgx) + "\n"]
+        + [_xeger.xeger(_gen_ignore_pattern) + "\n"]
+        + ["\tData Out\n"]
+        + [f"\tResult: {i['var_0']}\n"]
+        + [f"\tMetric: {i['var_1']}\n"]
+        + [f"\tNormalised: {i['var_2']}\n"]
+        + [f"\tAccuracy: {i['var_3']}\n"]
+        + [f"\tDeviation: {i['var_4']}\n"]
         for i in _expected
     ]
 
-    def run_simulation(out_file: str, trigger, file_content: list[list[str]]=_file_blocks, interval:float=_refresh_interval) -> None:
+    def run_simulation(
+        out_file: str,
+        trigger,
+        file_content: list[list[str]] = _file_blocks,
+        interval: float = _refresh_interval,
+    ) -> None:
         for block in file_content:
             time.sleep(interval)
             with open(out_file, "a") as out_f:
@@ -325,7 +337,9 @@ def test_parse_log_in_blocks() -> None:
         counter.value += 1
 
     @mp_parse.log_parser
-    def parser_func(file_content: str, **_) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
+    def parser_func(
+        file_content: str, **_
+    ) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
         _regex_search_str = r"\s*Data Out\n\s*Result:\ (\d+\.\d+)\n\s*Metric:\ (\d+\.\d+)\n\s*Normalised:\ (\d+\.\d+)\n\s*Accuracy:\ (\d+\.\d+)\n\s*Deviation:\ (\d+\.\d+)"
 
         _parser = re.compile(_regex_search_str, re.MULTILINE)
@@ -333,25 +347,27 @@ def test_parse_log_in_blocks() -> None:
 
         for match_group in _parser.finditer(file_content):
             _out_data += [
-                {f"var_{i}": float(match_group.group(i+1)) for i in range(5)}
+                {f"var_{i}": float(match_group.group(i + 1)) for i in range(5)}
             ]
         return {}, _out_data
 
     with tempfile.NamedTemporaryFile(suffix=".log") as temp_f:
         _termination_trigger = multiprocessing.Event()
-        _process = multiprocessing.Process(target=run_simulation, args=(temp_f.name,_termination_trigger))
+        _process = multiprocessing.Process(
+            target=run_simulation, args=(temp_f.name, _termination_trigger)
+        )
 
         with multiparser.FileMonitor(
             per_thread_callback=callback_check,
             termination_trigger=_termination_trigger,
-            interval=0.1*_refresh_interval,
+            interval=0.1 * _refresh_interval,
             log_level=logging.DEBUG,
-            terminate_all_on_fail=True
+            terminate_all_on_fail=True,
         ) as monitor:
             monitor.tail(
                 path_glob_exprs=[temp_f.name],
                 parser_func=parser_func,
-                skip_lines_w_pattern=[re.compile(_gen_ignore_pattern)]
+                skip_lines_w_pattern=[re.compile(_gen_ignore_pattern)],
             )
             _process.start()
             monitor.run()
@@ -359,10 +375,7 @@ def test_parse_log_in_blocks() -> None:
 
 
 @pytest.mark.parsing
-@pytest.mark.parametrize(
-    "delimiter", (",", " "),
-    ids=("comma", "whitespace")
-)
+@pytest.mark.parametrize("delimiter", (",", " "), ids=("comma", "whitespace"))
 @pytest.mark.parametrize(
     "explicit_headers", ("no_headers", "headers", "headers_search")
 )
@@ -379,14 +392,16 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
     elif explicit_headers == "headers_search":
         _headers = None
         _header_search = re.compile(r"var_", re.IGNORECASE)
-        _expected = [{f"var_{i}": random.random() * 10 for i in range(5)} for _ in range(40)]
-        _file_blocks = [
-            _xeger.xeger("\w+\s\w+") + "\n" for _ in range(2) 
+        _expected = [
+            {f"var_{i}": random.random() * 10 for i in range(5)} for _ in range(40)
         ]
+        _file_blocks = [_xeger.xeger("\\w+\\s\\w+") + "\n" for _ in range(2)]
     else:
         _headers = None
         _header_search = None
-        _expected = [{f"var_{i}": random.random() * 10 for i in range(5)} for _ in range(40)]
+        _expected = [
+            {f"var_{i}": random.random() * 10 for i in range(5)} for _ in range(40)
+        ]
         _file_blocks = [delimiter.join(f"var_{i}" for i in range(5)) + "\n"]
 
     _gen_ignore_pattern = r"<!--ignore-this-\w+-\d+-->"
@@ -395,10 +410,7 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
     if explicit_headers == "headers_search":
         _file_blocks += [delimiter.join(f"var_{i}" for i in range(5)) + "\n"]
 
-    _file_blocks += [
-        delimiter.join(map(str, row.values())) + "\n"
-        for row in _expected
-    ]
+    _file_blocks += [delimiter.join(map(str, row.values())) + "\n" for row in _expected]
 
     @dataclasses.dataclass
     class Counter:
@@ -406,12 +418,17 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
 
     _counter = Counter()
 
-    def run_simulation(out_file: str, trigger, file_content: list[list[str]]=_file_blocks, interval:float=_refresh_interval) -> None:
+    def run_simulation(
+        out_file: str,
+        trigger,
+        file_content: list[list[str]] = _file_blocks,
+        interval: float = _refresh_interval,
+    ) -> None:
         current_line = 0
         while current_line + (n_lines := random.randint(4, 6)) < len(file_content):
             time.sleep(interval)
             with open(out_file, "a") as out_f:
-                out_f.writelines(file_content[current_line:current_line+n_lines])
+                out_f.writelines(file_content[current_line : current_line + n_lines])
             current_line += n_lines
         trigger.set()
 
@@ -422,20 +439,26 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
 
     with tempfile.NamedTemporaryFile(suffix=".csv") as temp_f:
         _termination_trigger = multiprocessing.Event()
-        _process = multiprocessing.Process(target=run_simulation, args=(temp_f.name,_termination_trigger))
+        _process = multiprocessing.Process(
+            target=run_simulation, args=(temp_f.name, _termination_trigger)
+        )
 
         with multiparser.FileMonitor(
             per_thread_callback=callback_check,
             termination_trigger=_termination_trigger,
-            interval=0.1*_refresh_interval,
+            interval=0.1 * _refresh_interval,
             log_level=logging.DEBUG,
-            terminate_all_on_fail=True
+            terminate_all_on_fail=True,
         ) as monitor:
             monitor.tail(
                 path_glob_exprs=[temp_f.name],
                 parser_func=tail_record_delimited,
-                parser_kwargs={"delimiter": delimiter, "headers": _headers, "header_pattern": _header_search},
-                skip_lines_w_pattern=[re.compile(_gen_ignore_pattern)]
+                parser_kwargs={
+                    "delimiter": delimiter,
+                    "headers": _headers,
+                    "header_pattern": _header_search,
+                },
+                skip_lines_w_pattern=[re.compile(_gen_ignore_pattern)],
             )
             _process.start()
             monitor.run()
@@ -447,19 +470,19 @@ def test_parse_h5() -> None:
     _data_file: str = os.path.join(DATA_LIBRARY, "example.h5")
 
     @file_parser
-    def parser_func(input_file: str, **_) -> tuple[dict[str, typing.Any, dict[str, typing.Any]]]:
-        return {}, pandas.read_hdf(file_name, key={"key": "my_group/my_dataset"}).to_dict()
+    def parser_func(
+        input_file: str, **_
+    ) -> tuple[dict[str, typing.Any, dict[str, typing.Any]]]:
+        return {}, pandas.read_hdf(
+            file_name, key={"key": "my_group/my_dataset"}
+        ).to_dict()
 
     with multiparser.FileMonitor(
         per_thread_callback=lambda *_, **__: (),
         log_level=logging.DEBUG,
-        terminate_all_on_fail=True
+        terminate_all_on_fail=True,
     ) as monitor:
-        monitor.track(
-            path_glob_exprs=_data_file,
-            parser_func=parser_func,
-            static=True
-        )
+        monitor.track(path_glob_exprs=_data_file, parser_func=parser_func, static=True)
         monitor.run()
         monitor.terminate()
 
@@ -467,7 +490,7 @@ def test_parse_h5() -> None:
 @pytest.mark.monitor
 def test_timeout_trigger() -> None:
     _timeout: int = 5
-    _test_passed = multiprocessing.Value('i', 0)
+    _test_passed = multiprocessing.Value("i", 0)
 
     def timer_test(trigger, timeout, passed) -> None:
         _start_time = time.time()
@@ -480,17 +503,17 @@ def test_timeout_trigger() -> None:
                 return
         _end_time = time.time()
         passed.value = int(_end_time - _start_time)
-    
+
     with multiparser.FileMonitor(
         per_thread_callback=lambda *_, **__: (),
         log_level=logging.DEBUG,
         timeout=_timeout,
-        terminate_all_on_fail=True
+        terminate_all_on_fail=True,
     ) as monitor:
         monitor.run()
         _process = multiprocessing.Process(
             target=timer_test,
-            args=(monitor._monitor_termination_trigger, _timeout, _test_passed)
+            args=(monitor._monitor_termination_trigger, _timeout, _test_passed),
         )
 
         _process.start()
@@ -505,9 +528,7 @@ def test_timeout_trigger() -> None:
 @pytest.mark.parametrize(
     "scenario", ("invalid_argument", "no_arbitrary_keyword_args", "undecorated")
 )
-@pytest.mark.parametrize(
-    "parser_type", ("file", "log")
-)
+@pytest.mark.parametrize("parser_type", ("file", "log"))
 def test_check_invalid_parser_functions(scenario: str, parser_type: str) -> None:
     if scenario == "invalid_argument":
         parser_func = lambda file_line: ({}, {})
@@ -523,20 +544,18 @@ def test_check_invalid_parser_functions(scenario: str, parser_type: str) -> None
             parser_func = lambda input_file, **_: ({}, {})
 
     if scenario != "undecorated":
-        parser_func = file_parser(parser_func) if parser_type == "file" else log_parser(parser_func)
+        parser_func = (
+            file_parser(parser_func)
+            if parser_type == "file"
+            else log_parser(parser_func)
+        )
 
     with multiparser.FileMonitor(
-        log_level=logging.DEBUG,
-        timeout=2,
-        terminate_all_on_fail=True
+        log_level=logging.DEBUG, timeout=2, terminate_all_on_fail=True
     ) as monitor:
         with pytest.raises(AssertionError) as exc:
             if parser_type == "file":
-                monitor.track(
-                    path_glob_exprs="*",
-                    parser_func=parser_func,
-                    static=True
-                )
+                monitor.track(path_glob_exprs="*", parser_func=parser_func, static=True)
             else:
                 monitor.tail(
                     path_glob_exprs="*",
@@ -547,7 +566,9 @@ def test_check_invalid_parser_functions(scenario: str, parser_type: str) -> None
     if scenario == "invalid_argument":
         _exception = f"Expected keyword argument '{'input_file' if parser_type == 'file' else 'file_content'}'"
     elif scenario == "undecorated":
-        _exception = f"must be decorated using the multiparser.{parser_type}_parser decorator"
+        _exception = (
+            f"must be decorated using the multiparser.{parser_type}_parser decorator"
+        )
     else:
         _exception = "must allow arbitrary number of keyword arguments"
 
@@ -564,7 +585,6 @@ def test_file_parser_with_args() -> None:
             lines = lines[skip_lines:]
         return {}, {"lines": lines}
 
-
     with tempfile.TemporaryDirectory() as temp_d:
         _data_file = fake_csv(temp_d)
         _skip_lines = 2
@@ -578,13 +598,13 @@ def test_file_parser_with_args() -> None:
             per_thread_callback=callback_check,
             log_level=logging.DEBUG,
             timeout=2,
-            terminate_all_on_fail=True
+            terminate_all_on_fail=True,
         ) as monitor:
             monitor.track(
                 path_glob_exprs=_data_file,
                 parser_func=parse_file,
                 parser_kwargs={"skip_lines": _skip_lines},
-                static=True
+                static=True,
             )
             monitor.run()
 
@@ -600,7 +620,6 @@ def test_log_parser_with_args() -> None:
             _words = _words[:word_count]
         return {}, {"words": _words}
 
-
     with tempfile.TemporaryDirectory() as temp_d:
         _data_file = fake_csv(temp_d)
         _word_count = 2
@@ -612,7 +631,7 @@ def test_log_parser_with_args() -> None:
             per_thread_callback=callback_check,
             log_level=logging.DEBUG,
             timeout=2,
-            terminate_all_on_fail=True
+            terminate_all_on_fail=True,
         ) as monitor:
             monitor.tail(
                 path_glob_exprs=_data_file,
@@ -620,15 +639,14 @@ def test_log_parser_with_args() -> None:
                 parser_kwargs={"word_count": _word_count},
             )
             monitor.run()
-        
+
 
 @pytest.mark.monitor
-@pytest.mark.parametrize(
-    "style", ("normal", "mixed", "list")
-)
+@pytest.mark.parametrize("style", ("normal", "mixed", "list"))
 def test_custom_parser(style: str) -> None:
     METADATA = {"meta": 2, "demo": "test"}
     DATA = {"a": 2, "b": 3.2, "c": "test"}
+
     @mp_parse.file_parser
     def _parser_func(input_file: str, style=style, **_):
         if style == "normal":
@@ -637,24 +655,24 @@ def test_custom_parser(style: str) -> None:
             return METADATA, 10 * [DATA]
         else:
             return 10 * [(METADATA, DATA)]
-        
+
     with tempfile.TemporaryDirectory() as temp_d:
         _timeout: int = 5
-        def dummy_file(out_dir: str=temp_d, timeout: int=_timeout) -> None:
+
+        def dummy_file(out_dir: str = temp_d, timeout: int = _timeout) -> None:
             with open(os.path.join(out_dir, "test.tst")) as out_f:
                 out_f.write("testing")
             time.sleep(timeout)
+
         with multiparser.FileMonitor(
             per_thread_callback=lambda *_, **__: (),
             log_level=logging.DEBUG,
             timeout=_timeout,
-            terminate_all_on_fail=True
+            terminate_all_on_fail=True,
         ) as monitor:
             monitor.run()
             monitor.track(
-                path_glob_exprs=["*.tst"],
-                tracked_values=None,
-                parser_func=_parser_func
+                path_glob_exprs=["*.tst"], tracked_values=None, parser_func=_parser_func
             )
             _process = multiprocessing.Process(
                 target=dummy_file,
@@ -671,29 +689,28 @@ def test_custom_parser(style: str) -> None:
 def test_custom_log_parser(parser: str) -> None:
     def _undecorated_custom_log_parser(file_content: str, *_, **__):
         return {}, {"some_data": 2, "content": file_content}
-    
+
     @mp_parse.log_parser
     def _good_custom_log_parser(file_content: str, *_, **__):
         return _undecorated_custom_log_parser(file_content)
-    
+
     @mp_parse.log_parser
     def _bad_return_custom_log_parser(file_content: str, *_, **__):
         return file_content, "oops"
-    
+
     @mp_parse.log_parser
     def _bad_raises_custom_log_parser(file_content: str, *_, **__):
         raise RuntimeError("Oops")
-    
+
     if parser == "valid_parser":
         with multiparser.FileMonitor(
             lambda *_: None,
             log_level=logging.INFO,
             terminate_all_on_fail=True,
-            timeout=2
+            timeout=2,
         ) as monitor:
             monitor.tail(
-                path_glob_exprs=["files*"],
-                parser_func=_good_custom_log_parser
+                path_glob_exprs=["files*"], parser_func=_good_custom_log_parser
             )
     elif parser == "undecorated":
         with pytest.raises(AssertionError) as e:
@@ -701,38 +718,38 @@ def test_custom_log_parser(parser: str) -> None:
                 lambda *_: None,
                 log_level=logging.INFO,
                 terminate_all_on_fail=True,
-                timeout=2
+                timeout=2,
             ) as monitor:
                 monitor.tail(
                     path_glob_exprs=["files*"],
-                    parser_func=_undecorated_custom_log_parser
+                    parser_func=_undecorated_custom_log_parser,
                 )
                 assert "Parser function must be decorated" in str(e.value)
     elif parser == "bad_return":
         with pytest.raises(AssertionError) as e:
             with multiparser.FileMonitor(
-            lambda *_: None,
+                lambda *_: None,
                 log_level=logging.INFO,
                 terminate_all_on_fail=True,
-                timeout=2
+                timeout=2,
             ) as monitor:
                 monitor.tail(
-                path_glob_exprs=["files*"],
-                parser_func=_bad_return_custom_log_parser
-            )
+                    path_glob_exprs=["files*"],
+                    parser_func=_bad_return_custom_log_parser,
+                )
             assert "Parser function must return two objects, " in str(e.value)
     else:
         with pytest.raises(AssertionError) as e:
             with multiparser.FileMonitor(
-            lambda *_: None,
+                lambda *_: None,
                 log_level=logging.INFO,
                 terminate_all_on_fail=True,
-                timeout=2
+                timeout=2,
             ) as monitor:
                 monitor.tail(
-                path_glob_exprs=["files*"],
-                parser_func=_bad_raises_custom_log_parser
-            )
+                    path_glob_exprs=["files*"],
+                    parser_func=_bad_raises_custom_log_parser,
+                )
             assert "Custom parser testing failed with exception" in str(e.value)
 
 
