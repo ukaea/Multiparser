@@ -7,7 +7,9 @@ import tempfile
 import time
 import typing
 import dataclasses
-
+import pathlib
+import threading
+import csv
 import pandas
 import pytest
 import pytest_mock
@@ -22,7 +24,7 @@ import multiparser.thread as mp_thread
 import multiparser.parsing as mp_parse
 
 from tests.conftest import fake_json, fake_parquet, fake_pickle, fake_yaml, fake_feather
-from multiparser.parsing.tail import log_parser, record_with_delimiter as tail_record_delimited
+from multiparser.parsing.tail import log_parser, record_with_delimiter as tail_record_delimited, record_csv
 from multiparser.parsing.file import file_parser
 
 
@@ -732,3 +734,46 @@ def test_custom_log_parser(parser: str) -> None:
                 parser_func=_bad_raises_custom_log_parser
             )
             assert "Custom parser testing failed with exception" in str(e.value)
+
+
+def test_monitor_slow_callback():
+    TRIGGER = multiprocessing.Event()
+    RECORDED_DATA = []
+
+    def write_rows(results_path):
+        with open(results_path, "w") as file:
+            # Create a DictWriter object
+            writer = csv.DictWriter(file, fieldnames=['number'])
+
+            # Write the header row
+            writer.writeheader()
+            for i in range(5):
+                # Write data rows
+                writer.writerow({"number": i})
+                file.flush()
+                time.sleep(0.2)
+                    
+            TRIGGER.set()
+                
+    def callback(data: dict, *_):
+        RECORDED_DATA.append(data)
+        time.sleep(0.5)
+        
+    with tempfile.TemporaryDirectory() as tempd:
+        results_path = pathlib.Path(tempd).joinpath("results.csv")
+            
+        thread = threading.Thread(target=write_rows, args=(results_path,))
+                
+        thread.start()
+
+        with multiparser.FileMonitor(
+            termination_trigger=TRIGGER
+        ) as monitor:
+            monitor.tail(
+                path_glob_exprs=str(results_path),
+                parser_func=record_csv,
+                callback=callback,
+            )
+            monitor.run()
+            
+    assert len(RECORDED_DATA) == 5

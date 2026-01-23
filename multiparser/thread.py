@@ -465,8 +465,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         mp_exc.SessionFailure
             an exception summarising all thread failures
         """
-        if self._terminate_on_file_thread_fail:
-            self.abort_threads()
+        self.abort_threads()
 
         if not any(self._exceptions.values()):
             return
