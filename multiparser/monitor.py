@@ -168,7 +168,7 @@ class FileMonitor:
             _exceptions: dict[str, Exception | None] = self._exceptions,
             user_defined=user_callback,
             abort_on_fail=self._shutdown_on_thread_failure,
-            abort_func=self.terminate,
+            abort_func=(lambda: self._monitor_termination_trigger.set()),
         ) -> None:
             if user_defined:
                 user_defined(f"{type(exception).__name__}: '{exception.args[0]}'")
@@ -247,6 +247,7 @@ class FileMonitor:
                 self._interval,
                 self._flatten_data,
             ),
+            daemon=True,
         )
 
         self._log_monitor_thread = threading.Thread(
@@ -259,6 +260,7 @@ class FileMonitor:
                 self._interval,
                 self._flatten_data,
             ),
+            daemon=True,
         )
 
     def _check_custom_log_parser(
@@ -291,7 +293,10 @@ class FileMonitor:
         try:
             # Parsers are expected to have the keyword argument 'file_content'
             _out = parser(
-                file_content=_test_str, __input_file=__file__, __read_bytes=None, **parser_kwargs
+                file_content=_test_str,
+                __input_file=__file__,
+                __read_bytes=None,
+                **parser_kwargs,
             )
 
             # If the custom parser returns a list of entries, not just one
@@ -299,7 +304,9 @@ class FileMonitor:
                 _out = _out[0]
 
         except Exception as e:
-            raise AssertionError(f"Custom parser testing failed for '{parser.__name__}' with exception:\n{e}")
+            raise AssertionError(
+                f"Custom parser testing failed for '{parser.__name__}' with exception:\n{e}"
+            )
 
         if (
             len(_out) != 2
@@ -430,8 +437,7 @@ class FileMonitor:
                 raise AssertionError("Globular expression must be of type AnyStr")
             glob.glob(_glob_ex)
 
-
-    def tail( # noqa: C901
+    def tail(  # noqa: C901
         self,
         *,
         path_glob_exprs: typing.List[str] | str,
@@ -522,8 +528,7 @@ class FileMonitor:
 
         if parser_func and labels:
             raise AssertionError(
-                "Cannot specify both labels and custom parser for monitor "
-                "method 'tail'"
+                "Cannot specify both labels and custom parser for monitor method 'tail'"
             )
 
         _tracked_values: typing.List[str | re.Pattern]

@@ -315,7 +315,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         parser_func: typing.Callable | None = None,
         file_type: str | None = None,
         glob_expr: str | None = None,
-        **parser_kwargs
+        **parser_kwargs,
     ) -> None:
         """Create a new thread for a monitored file
 
@@ -358,9 +358,8 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
             _terminated = False
             try:
                 while not _terminated:
-                    
                     _terminated = termination_trigger.is_set()
-                        
+
                     time.sleep(interval)
 
                     # If the file does not exist yet then continue
@@ -401,8 +400,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
                 exception_callback(exception=e)
 
         self._file_threads[file_name] = threading.Thread(
-            target=_read_loop,
-            args=(self._records,),
+            target=_read_loop, args=(self._records,), daemon=True
         )
 
     @handle_monitor_thread_exception
