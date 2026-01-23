@@ -8,11 +8,8 @@ import pathlib
 import time
 import typing
 import dataclasses
-<<<<<<< HEAD
 import pathlib
 import threading
-=======
->>>>>>> 9dceaf26a95801c1bff61aa0985b51abcd433eab
 import csv
 import pandas
 import pytest
