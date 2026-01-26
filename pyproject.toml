@@ -1,5 +1,5 @@
 [project]
-name = "multiparser"
+name = "ukaea-multiparser"
 version = "1.0.5"
 description = "Multiple File Parser for monitoring and processing updates to a given set of output files."
 readme = "README.md"
