@@ -74,7 +74,7 @@ def file_parser(parser: typing.Callable) -> typing.Callable:
     def _wrapper(*args, input_file: str, **kwargs) -> TimeStampedData:
         """Full file parser decorator"""
         _data: TimeStampedData = parser(*args, input_file=input_file, **kwargs)
-        _meta_data: typing.Dict[str, str] = {
+        _meta_data: dict[str, str] = {
             "timestamp": datetime.datetime.fromtimestamp(
                 os.path.getmtime(input_file)
             ).strftime("%Y-%m-%d %H:%M:%S.%f"),
@@ -151,7 +151,7 @@ def record_toml(input_file: str) -> TimeStampedData:
     return {}, toml.load(input_file)
 
 
-SUFFIX_PARSERS: typing.Dict[typing.Tuple[str, ...], typing.Callable] = {
+SUFFIX_PARSERS: dict[typing.Tuple[str, ...], typing.Callable] = {
     ("csv",): record_csv,
     ("pkl", "pickle", "pckl"): record_pickle,
     ("pqt", "parquet"): record_parquet,
@@ -165,8 +165,8 @@ SUFFIX_PARSERS: typing.Dict[typing.Tuple[str, ...], typing.Callable] = {
 
 def _full_file_parse(parse_func, in_file, tracked_values, **parser_kwargs) -> TimeStampedData:
     """Apply specific parser to a file"""
-    _data: typing.List[typing.Dict[str, typing.Any]]
-    _meta: typing.Dict[str, typing.Any]
+    _data: list[dict[str, typing.Any]]
+    _meta: dict[str, typing.Any]
     _parsed = parse_func(input_file=in_file, **parser_kwargs)
     _meta, _data = _parsed
 
@@ -180,10 +180,10 @@ def _full_file_parse(parse_func, in_file, tracked_values, **parser_kwargs) -> Ti
         return _parsed
 
     # Filter by key through each set of values
-    _out_data: typing.List[typing.Dict[str, typing.Any]] = []
+    _out_data: list[dict[str, typing.Any]] = []
 
     for entry in _data:
-        _out_data_entry: typing.Dict[str, typing.Any] = {}
+        _out_data_entry: dict[str, typing.Any] = {}
         for tracked_val in tracked_values or []:
             _out_data_entry |= {
                 k: v
@@ -199,7 +199,7 @@ def _full_file_parse(parse_func, in_file, tracked_values, **parser_kwargs) -> Ti
 def record_file(
     input_file: str,
     *,
-    tracked_values: typing.List[re.Pattern[str]] | None,
+    tracked_values: list[re.Pattern[str]] | None,
     parser_func: typing.Callable | None,
     file_type: str | None,
     **parser_kwargs
@@ -213,7 +213,7 @@ def record_file(
     ----------
     input_file : str
         the file to parse
-    tracked_values : typing.List[re.Pattern[str]] | None
+    tracked_values : list[re.Pattern[str]] | None
         regular expressions defining the values to be monitored, by default None
     parser_func : typing.Callable | None
         a custom parser to use for the given file
@@ -235,7 +235,7 @@ def record_file(
         if the given file type is not recognised
     """
     _extension: str = file_type or os.path.splitext(input_file)[1].replace(".", "")
-    _tracked_vals: typing.List[re.Pattern[str]] | None = tracked_values or []
+    _tracked_vals: list[re.Pattern[str]] | None = tracked_values or []
 
     if parser_func:
         return _full_file_parse(parser_func, input_file, _tracked_vals, **parser_kwargs)

@@ -234,10 +234,10 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         refresh_interval: float,
         trackables: TrackableList,
         file_limit: int | None,
-        exclude_files_globex: typing.List[str] | None,
+        exclude_files_globex: list[str] | None,
         exception_callback: ExceptionCallback | None = None,
         file_thread_lock: typing.Any | None = None,
-        file_list: typing.List[str] | None = None,
+        file_list: list[str] | None = None,
         flatten_data: bool = False,
         abort_on_fail: bool = False,
         test_exception_capture: bool = False,
@@ -255,18 +255,18 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
             function called to notify when a new file is detected
         refresh_interval : float
             how often to check for new files
-        trackables : typing.List[LogFileTrackable  |  FullFileTrackable]
+        trackables : list[LogFileTrackable  |  FullFileTrackable]
             a tuple containing:
                 - globular expression for file capture
                 - regular_expressions for variable tracking within files
                 - whether the file is static (written once) or changing
         file_limit : int, optional
             place a limit on the number of files that can be monitored
-        exclude_files_globex : typing.List[str] | None
+        exclude_files_globex : list[str] | None
             a list of globular expressions for files to exclude
         exception_callback : typing.Callable | None, optional
             function to call when an exception is thrown
-        file_list : typing.List[str] | None, optional
+        file_list : list[str] | None, optional
             container to append any found file names, by default None
         file_thread_lock : threading.Lock, optional
             shared mutex to prevent the callback being called simultaneously by
@@ -286,18 +286,18 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         self._termination_trigger: threading.Event = file_thread_termination_trigger
         self._parsing_callback: CallbackType = parsing_callback
         self._notifier: MessageCallback = notification_callback
-        self._file_threads: typing.Dict[str, threading.Thread] = {}
-        self._exclude_globex: typing.List[str] | None = exclude_files_globex
-        self._records: typing.List[typing.Tuple[str, str]] = []
+        self._file_threads: dict[str, threading.Thread] = {}
+        self._exclude_globex: list[str] | None = exclude_files_globex
+        self._records: list[typing.Tuple[str, str]] = []
         self._interval = refresh_interval
         self._monitored_files = file_list if file_list is not None else []
         self._flatten_data = flatten_data
-        self._exceptions: typing.Dict[str, Exception | None] = {}
+        self._exceptions: dict[str, Exception | None] = {}
         self._file_limit: int | None = file_limit
         self._exception_test: bool = test_exception_capture
 
     @property
-    def exceptions(self) -> typing.Dict[str, Exception | None]:
+    def exceptions(self) -> dict[str, Exception | None]:
         return self._exceptions
 
     @property
@@ -315,7 +315,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         parser_func: typing.Callable | None = None,
         file_type: str | None = None,
         glob_expr: str | None = None,
-        **parser_kwargs
+        **parser_kwargs,
     ) -> None:
         """Create a new thread for a monitored file
 
@@ -334,7 +334,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         def _thread_exception_callback(
             exception: Exception,
             target_file: str = file_name,
-            exceptions: typing.Dict[str, Exception | None] = self._exceptions,
+            exceptions: dict[str, Exception | None] = self._exceptions,
         ) -> None:
             exceptions[target_file] = exception
 
@@ -354,10 +354,12 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         ) -> None:
             """Thread target function for parsing of detected file"""
 
-            _cached_metadata: typing.Dict[str, str | int] = {}
-
+            _cached_metadata: dict[str, str | int] = {}
+            _terminated = False
             try:
-                while not termination_trigger.is_set():
+                while not _terminated:
+                    _terminated = termination_trigger.is_set()
+
                     time.sleep(interval)
 
                     # If the file does not exist yet then continue
@@ -398,8 +400,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
                 exception_callback(exception=e)
 
         self._file_threads[file_name] = threading.Thread(
-            target=_read_loop,
-            args=(self._records,),
+            target=_read_loop, args=(self._records,), daemon=True
         )
 
     @handle_monitor_thread_exception
@@ -413,13 +414,13 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
                 break
 
             time.sleep(self._interval)
-            _excludes: typing.List[str] = []
+            _excludes: list[str] = []
             for expr in self._exclude_globex or []:
                 _excludes += glob.glob(expr)
             for trackable in self._trackables:
                 # Check for multiple tracking entries for the same file
                 # not allowed due to constraint of one thread spawned per file
-                _registered_files: typing.List[str] = []
+                _registered_files: list[str] = []
                 if not isinstance((_glob_str := trackable.get("glob_expr")), str):
                     raise AssertionError(
                         f"Expected type AnyStr for globular expression but got '{_glob_str}'"
@@ -462,8 +463,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         mp_exc.SessionFailure
             an exception summarising all thread failures
         """
-        if self._terminate_on_file_thread_fail:
-            self.abort_threads()
+        self.abort_threads()
 
         if not any(self._exceptions.values()):
             return
@@ -485,14 +485,14 @@ class LogFileThreadLauncher(
 
     def __init__(
         self,
-        trackables: typing.List[LogFileTrackable],
+        trackables: list[LogFileTrackable],
         file_thread_termination_trigger: threading.Event,
         refresh_interval: float,
         file_limit: int | None,
-        exclude_files_globex: typing.List[str] | None,
+        exclude_files_globex: list[str] | None,
         exception_callback: typing.Callable | None = None,
         notification_callback: typing.Callable | None = None,
-        file_list: typing.List[str] | None = None,
+        file_list: list[str] | None = None,
         file_thread_lock: typing.Any | None = None,
         flatten_data: bool = False,
         abort_on_fail: bool = False,
@@ -502,7 +502,7 @@ class LogFileThreadLauncher(
 
         Parameters
         ----------
-        trackables : typing.List[LogFileTrackable]
+        trackables : list[LogFileTrackable]
             list of tuples containing:
                 - globular expressions of files to monitor
                 - regex defining the variables to track
@@ -514,14 +514,14 @@ class LogFileThreadLauncher(
             how often to check for new files
         file_limit : int, optional
             place a limit on the number of files that can be monitored
-        exclude_files_globex : typing.List[str] | None
+        exclude_files_globex : list[str] | None
             a list of globular expressions for files to exclude
         exception_callback : typing.Callable | None, optional
             function to call when an exception is thrown
         notification_callback : typing.Callable | None, optional
             function called to notify when a new file is detected.
             Default is a print statement.
-        file_list : typing.List[str] | None, optional
+        file_list : list[str] | None, optional
             container to append any found file names, by default None
         file_thread_lock : threading.Lock, optional
             shared mutex to prevent the callback being called simultaneously by
@@ -564,14 +564,14 @@ class FullFileThreadLauncher(
 
     def __init__(
         self,
-        trackables: typing.List[FullFileTrackable],
+        trackables: list[FullFileTrackable],
         file_thread_termination_trigger: threading.Event,
         refresh_interval: float,
         file_limit: int | None,
-        exclude_files_globex: typing.List[str] | None,
+        exclude_files_globex: list[str] | None,
         exception_callback: typing.Callable | None = None,
         notification_callback: typing.Callable | None = None,
-        file_list: typing.List[str] | None = None,
+        file_list: list[str] | None = None,
         file_thread_lock: "threading.Lock | None" = None,
         flatten_data: bool = False,
         abort_on_fail: bool = False,
@@ -581,7 +581,7 @@ class FullFileThreadLauncher(
 
         Parameters
         ----------
-        trackables : typing.List[FullFileTrackable]
+        trackables : list[FullFileTrackable]
             Dictionary containing:
                 - globular expressions of files to monitor
                 - regex defining the variables to track
@@ -594,14 +594,14 @@ class FullFileThreadLauncher(
             how often to check for new files
         file_limit : int, optional
             place a limit on the number of files that can be monitored
-        exclude_files_globex : typing.List[str] | None
+        exclude_files_globex : list[str] | None
             a list of globular expressions for files to exclude
         exception_callback : typing.Callable | None, optional
             function to call when an exception is thrown
         notification_callback : typing.Callable | None, optional
             function called to notify when a new file is detected.
             Default is a print statement.
-        file_list : typing.List[str] | None, optional
+        file_list : list[str] | None, optional
             container to append any found file names, by default None
         file_thread_lock : threading.Lock, optional
             shared mutex to prevent the callback being called simultaneously by

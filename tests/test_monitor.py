@@ -4,10 +4,12 @@ import os
 import random
 import re
 import tempfile
+import pathlib
 import time
 import typing
 import dataclasses
-
+import threading
+import csv
 import pandas
 import pytest
 import pytest_mock
@@ -17,8 +19,8 @@ import xeger
 
 import multiparser
 import multiparser.exceptions as mp_exc
-import multiparser.thread as mp_thread
 import multiparser.parsing as mp_parse
+
 
 from conftest import (
     fake_json,
@@ -33,6 +35,7 @@ from conftest import (
 )
 from multiparser.parsing.tail import (
     log_parser,
+    record_csv,
     record_with_delimiter as tail_record_delimited,
 )
 from multiparser.parsing.file import file_parser
@@ -102,9 +105,8 @@ def test_run_on_directory_all(
 
     with tempfile.TemporaryDirectory() as temp_d:
         for faker in _fakers:
-            if not faker:
+            if not faker(temp_d):
                 continue
-            faker(temp_d)
         for _ in range(8):
             random.choice(_fakers)(temp_d)
 
@@ -206,10 +208,10 @@ def test_run_on_directory_filtered() -> None:
         ) as monitor:
             monitor.track(
                 path_glob_exprs=_csv_file,
-                tracked_values=["d_other", re.compile("\w_value")],
+                tracked_values=["d_other", re.compile("\\w_value")],
             )
             monitor.track(
-                path_glob_exprs=_nml_file, tracked_values=[re.compile("\w_val_\w")]
+                path_glob_exprs=_nml_file, tracked_values=[re.compile("\\w_val_\\w")]
             )
             monitor.track(
                 path_glob_exprs=_toml_file,
@@ -401,7 +403,7 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
         _expected = [
             {f"var_{i}": random.random() * 10 for i in range(5)} for _ in range(40)
         ]
-        _file_blocks = [_xeger.xeger("\w+\s\w+") + "\n" for _ in range(2)]
+        _file_blocks = [_xeger.xeger("\\w+\\s\\w+") + "\n" for _ in range(2)]
     else:
         _headers = None
         _header_search = None
@@ -755,3 +757,44 @@ def test_custom_log_parser(parser: str) -> None:
                     parser_func=_bad_raises_custom_log_parser,
                 )
             assert "Custom parser testing failed with exception" in str(e.value)
+
+
+def test_monitor_slow_callback():
+    TRIGGER = multiprocessing.Event()
+    RECORDED_DATA = []
+
+    def write_rows(results_path):
+        with open(results_path, "w") as file:
+            # Create a DictWriter object
+            writer = csv.DictWriter(file, fieldnames=["number"])
+
+            # Write the header row
+            writer.writeheader()
+            for i in range(5):
+                # Write data rows
+                writer.writerow({"number": i})
+                file.flush()
+                time.sleep(0.2)
+
+            TRIGGER.set()
+
+    def callback(data: dict, *_):
+        RECORDED_DATA.append(data)
+        time.sleep(0.5)
+
+    with tempfile.TemporaryDirectory() as tempd:
+        results_path = pathlib.Path(tempd).joinpath("results.csv")
+
+        thread = threading.Thread(target=write_rows, args=(results_path,))
+
+        thread.start()
+
+        with multiparser.FileMonitor(termination_trigger=TRIGGER) as monitor:
+            monitor.tail(
+                path_glob_exprs=str(results_path),
+                parser_func=record_csv,
+                callback=callback,
+            )
+            monitor.run()
+
+    assert len(RECORDED_DATA) == 5
