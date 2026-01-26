@@ -1,6 +1,6 @@
 [project]
 name = "multiparser"
-version = "1.0.6"
+version = "1.0.5"
 description = "Multiple File Parser for monitoring and processing updates to a given set of output files."
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
