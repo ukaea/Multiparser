@@ -1,3 +1,7 @@
+# 2026-01-26 [v1.0.6](https://github.com/ukaea/Multiparser/releases/tag/v1.0.6)
+
+- Fix `flatdict==4.0.0` to address breakages due to `pkg_resources` removal.
+
 # 2026-01-26 [v1.0.5](https://github.com/ukaea/Multiparser/releases/tag/v1.0.5)
 
 - Fixed bug with threads where thread joining could result in infinite loop causing hanging.
