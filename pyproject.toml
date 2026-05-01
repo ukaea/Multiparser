@@ -22,7 +22,7 @@ classifiers = [
 keywords = ["parsing", "monitoring", "logging"]
 license = { text = "MIT" }
 dependencies = [
-  "flatdict==4.0.0",
+  "flatdict==4.1.0",
   "loguru>=0.7.3",
   "pyyaml>=6.0.2",
   "toml>=0.10.2",
