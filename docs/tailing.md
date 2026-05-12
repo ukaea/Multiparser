@@ -20,7 +20,7 @@ monitor.tail(
 
 Either a single globular expression string or a list of such strings defining files to be monitored by this tail, can be an explicit string if only one file is required.
 
-### `tracked_values`
+### `tracked_values` <a id="tracked-values"></a>
 `#!python list[str | Pattern] | str | Pattern | None`
 
 Default: `None`

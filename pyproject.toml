@@ -47,13 +47,14 @@ dev = [
 ]
 docs = [
   "mike>=2.1.3",
-  "mkdocs>=1.6.1",
   "mkdocs-git-revision-date-localized-plugin>=1.4.5",
   "mkdocs-material>=9.6.14",
   "mkdocs-mermaid2-plugin>=1.2.1",
   "mkdocstrings>=0.29.1",
+  "mkdocstrings-python>=2.0.3",
   "mktestdocs>=0.2.4",
   "pymdown-extensions>=10.15",
+  "zensical>=0.0.41",
 ]
 testing = [
   "pandas>=2.2.3",

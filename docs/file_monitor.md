@@ -16,7 +16,7 @@ with multiparser.FileMonitor(
 
 ## Arguments
 
-### `per_thread_callback`
+### `per_thread_callback` <a id="per-thread-callback"></a>
 `#!python Callable[[dict[str, Any], dict[str, Any]], None] | None`
 
 Default: `None`
