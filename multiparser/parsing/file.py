@@ -163,7 +163,9 @@ SUFFIX_PARSERS: dict[typing.Tuple[str, ...], typing.Callable] = {
 }
 
 
-def _full_file_parse(parse_func, in_file, tracked_values, **parser_kwargs) -> TimeStampedData:
+def _full_file_parse(
+    parse_func, in_file, tracked_values, **parser_kwargs
+) -> TimeStampedData:
     """Apply specific parser to a file"""
     _data: list[dict[str, typing.Any]]
     _meta: dict[str, typing.Any]
@@ -202,7 +204,7 @@ def record_file(
     tracked_values: list[re.Pattern[str]] | None,
     parser_func: typing.Callable | None,
     file_type: str | None,
-    **parser_kwargs
+    **parser_kwargs,
 ) -> TimeStampedData:
     """Record a recognised file, parsing its contents.
 
@@ -260,4 +262,3 @@ record_pickle.__skip_validation = True
 record_parquet.__skip_validation = True
 record_fortran_nml.__skip_validation = True
 record_file.__skip_validation = True
-

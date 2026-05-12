@@ -607,7 +607,7 @@ def record_log(
             __read_bytes=__read_bytes,
             tracked_values=tracked_values,
             convert=convert,
-            **parser_kwargs
+            **parser_kwargs,
         )
         _data.append(_processed)  # type: ignore
         _metadata = _metadata or _metadata_line

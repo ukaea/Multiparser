@@ -29,6 +29,5 @@ class SessionFailure(Exception):
             _info_str += f"{name}:\n\t\t"
             _info_str += "\n\t\t".join(traceback.format_exception(exception))
         super().__init__(
-            "Multiparser session encountered the following exceptions:\n\t"
-            f"{_info_str}"
+            f"Multiparser session encountered the following exceptions:\n\t{_info_str}"
         )

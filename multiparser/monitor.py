@@ -39,9 +39,7 @@ from multiparser.typing import FullFileTrackable, LogFileTrackable, TrackedValue
 __all__ = ["FileMonitor"]
 
 
-def _default_callback(
-    _: dict[str, typing.Any], meta: dict[str, typing.Any]
-) -> None:
+def _default_callback(_: dict[str, typing.Any], meta: dict[str, typing.Any]) -> None:
     """Default per file callback if none set globally or per file"""
     loguru.logger.warning(
         f"Changes detected but no callback set for {meta['file_name']}."
