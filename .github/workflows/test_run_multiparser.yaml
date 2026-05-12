@@ -13,15 +13,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+        python-version: ['3.10', '3.12', '3.14']
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: x64
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
       - name: Install UV
         run: python -m pip install uv
       - name: Run Unit Tests
-        run: uv run --all-groups --all-extras -p ${{ matrix.python-version }} pytest --cov=multiparser
+        run: |
+          uv sync --all-groups --all-extras --python ${{ matrix.python-version }}
+          uv run --python ${{ matrix.python-version }} pytest -p no:warnings \
+          -c /dev/null --cov=multiparser -v -o cache_dir=${GITHUB_WORKSPACE}/.pytest-cache

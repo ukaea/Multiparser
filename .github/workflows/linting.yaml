@@ -2,9 +2,9 @@ name: Code Linting
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: ["main", "dev"]
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: ["main", "dev"]
 
 permissions:
   contents: read
@@ -17,8 +17,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Lint Codebase
-      uses: jpetrucciani/ruff-check@0.1.0
-      with:
-          path: multiparser
+      - uses: actions/checkout@v3
+      - name: Lint Codebase
+        uses: astral-sh/ruff-action@v3
+        with:
+          src: "./multiparser"
