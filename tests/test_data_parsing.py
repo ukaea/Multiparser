@@ -1,3 +1,4 @@
+import pathlib
 import re
 import string
 import tempfile
@@ -136,6 +137,8 @@ def test_parse_log(fake_log, request) -> None:
 
     _file, _regex, _labels = fake_log.values()
     _regex_pairs = [(i, re.compile(j)) for i, j in zip(_labels, _regex)]
+    while not pathlib.Path(_file).exists():
+        time.sleep(1)
     if _id in [f"test_parse_log[{i}]" for i in _fail_cases]:
         with pytest.raises(ValueError):
             for _ in range(10):

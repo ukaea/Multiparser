@@ -1,3 +1,4 @@
+from collections.abc import Generator
 import multiprocessing
 import os
 import random
@@ -111,42 +112,50 @@ def to_nml(dictionary: dict[str, typing.Any], file_name: str) -> None:
         out_f.write("\n".join(out_str))
 
 
+def _write_dummy_delim_data(
+    file_name: str, delimiter: str, lines: list[list[str]]
+) -> None:
+    for block in lines:
+        time.sleep(0.1)
+        with open(file_name, "a") as out_f:
+            _out_line = delimiter.join(block)
+            out_f.writelines([_out_line])
+
+
 @pytest.fixture
-def fake_delimited_log(request) -> (
-    typing.Generator[
-        tuple[str, list[tuple[None, str]]], None, None
-    ]
-):
+def fake_delimited_log(
+    request,
+) -> Generator[tuple[str, list[tuple[None, str]]]]:
     _delimiter, _suffix = request.param
 
     _regex_gen = xeger.Xeger(limit=10, seed=XEGER_SEED)
 
     _gen_regex = r"\d+\.\d+"
 
-    def _write_dummy_data(file_name: str) -> None:
-        for _ in range(5):
-            time.sleep(0.1)
-            with open(file_name, "a") as out_f:
-                _out_line = _delimiter.join([_regex_gen.xeger(_gen_regex) for _ in range(5)])
-                out_f.writelines([_out_line])
+    _lines = [[_regex_gen.xeger(_gen_regex) for _ in range(5)] for _ in range(5)]
 
     with tempfile.TemporaryDirectory() as temp_d:
         _file_name: str = os.path.join(temp_d, f"dummy.{_suffix}")
         pathlib.Path(_file_name).touch()
         _process = multiprocessing.Process(
-            target=_write_dummy_data, args=(_file_name,)
+            target=_write_dummy_delim_data, args=(_file_name, _delimiter, _lines)
         )
         _process.start()
         yield _file_name
         _process.join()
 
 
+def _write_dummy_log_data(file_name: str, file_lines: list[str]) -> None:
+    for line in file_lines:
+        time.sleep(0.1)
+        with open(file_name, "a") as out_f:
+            out_f.writelines([line])
+
+
 @pytest.fixture
-def fake_log(request) -> (
-    typing.Generator[
-        tuple[str, list[tuple[None, str]]], None, None
-    ]
-):
+def fake_log(
+    request,
+) -> Generator[tuple[str, list[tuple[None, str]]]]:
     _labels, _capture_groups = request.param
 
     if _capture_groups == 2:
@@ -160,26 +169,23 @@ def fake_log(request) -> (
         _rand_regex_2 = r"test_\w+=(\'\w+\')"
 
     _regex_gen = xeger.Xeger(limit=10, seed=XEGER_SEED)
-
-    def _write_dummy_data(file_name: str) -> None:
-        for _ in range(5):
-            time.sleep(0.1)
-            with open(file_name, "a") as out_f:
-                _out_line = _regex_gen.xeger(_rand_regex_1)
-                _out_line += _regex_gen.xeger(r"\w+")
-                _out_line += _regex_gen.xeger(_rand_regex_2)
-                out_f.writelines([_out_line])
+    _rand_lines = [
+        _regex_gen.xeger(_rand_regex_1)
+        + _regex_gen.xeger(r"\w+")
+        + _regex_gen.xeger(_rand_regex_2)
+        for _ in range(5)
+    ]
 
     with tempfile.TemporaryDirectory() as temp_d:
         _file_name: str = os.path.join(temp_d, "dummy.log")
         _process = multiprocessing.Process(
-            target=_write_dummy_data, args=(_file_name,)
+            target=_write_dummy_log_data, args=(_file_name, _rand_lines)
         )
         _process.start()
         time.sleep(0.1)
         yield {
             "path_glob_exprs": _file_name,
             "tracked_values": (_rand_regex_1, _rand_regex_2),
-            "labels": ("var_1", "var_2") if _labels else (None, None)
+            "labels": ("var_1", "var_2") if _labels else (None, None),
         }
         _process.join()

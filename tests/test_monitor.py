@@ -296,6 +296,19 @@ def test_custom_data(stage: int, contains: tuple[str, ...]) -> None:
         monitor.terminate()
 
 
+def _run_block_simulation(
+    out_file: str,
+    trigger,
+    file_content: list[list[str]],
+    interval: float,
+) -> None:
+    for block in file_content:
+        time.sleep(interval)
+        with open(out_file, "a") as out_f:
+            out_f.writelines(block)
+    trigger.set()
+
+
 @pytest.mark.parsing
 def test_parse_log_in_blocks() -> None:
     _refresh_interval: float = 0.1
@@ -320,18 +333,6 @@ def test_parse_log_in_blocks() -> None:
         + [f"\tDeviation: {i['var_4']}\n"]
         for i in _expected
     ]
-
-    def run_simulation(
-        out_file: str,
-        trigger,
-        file_content: list[list[str]] = _file_blocks,
-        interval: float = _refresh_interval,
-    ) -> None:
-        for block in file_content:
-            time.sleep(interval)
-            with open(out_file, "a") as out_f:
-                out_f.writelines(block)
-        trigger.set()
 
     @dataclasses.dataclass
     class Counter:
@@ -362,7 +363,8 @@ def test_parse_log_in_blocks() -> None:
     with tempfile.NamedTemporaryFile(suffix=".log") as temp_f:
         _termination_trigger = multiprocessing.Event()
         _process = multiprocessing.Process(
-            target=run_simulation, args=(temp_f.name, _termination_trigger)
+            target=_run_block_simulation,
+            args=(temp_f.name, _termination_trigger, _file_blocks, _refresh_interval),
         )
 
         with multiparser.FileMonitor(
@@ -380,6 +382,18 @@ def test_parse_log_in_blocks() -> None:
             _process.start()
             monitor.run()
             _process.join()
+
+
+def _run_delim_block_simulation(
+    out_file: str, trigger, file_content: list[list[str]], interval: float
+) -> None:
+    current_line = 0
+    while current_line + (n_lines := random.randint(4, 6)) < len(file_content):
+        time.sleep(interval)
+        with open(out_file, "a") as out_f:
+            out_f.writelines(file_content[current_line : current_line + n_lines])
+        current_line += n_lines
+    trigger.set()
 
 
 @pytest.mark.parsing
@@ -426,20 +440,6 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
 
     _counter = Counter()
 
-    def run_simulation(
-        out_file: str,
-        trigger,
-        file_content: list[list[str]] = _file_blocks,
-        interval: float = _refresh_interval,
-    ) -> None:
-        current_line = 0
-        while current_line + (n_lines := random.randint(4, 6)) < len(file_content):
-            time.sleep(interval)
-            with open(out_file, "a") as out_f:
-                out_f.writelines(file_content[current_line : current_line + n_lines])
-            current_line += n_lines
-        trigger.set()
-
     def callback_check(data, _, comparison=_expected, counter=_counter) -> None:
         for key, value in data.items():
             assert value == comparison[counter.value][key]
@@ -448,7 +448,8 @@ def test_parse_delimited_in_blocks(delimiter, explicit_headers) -> None:
     with tempfile.NamedTemporaryFile(suffix=".csv") as temp_f:
         _termination_trigger = multiprocessing.Event()
         _process = multiprocessing.Process(
-            target=run_simulation, args=(temp_f.name, _termination_trigger)
+            target=_run_delim_block_simulation,
+            args=(temp_f.name, _termination_trigger, _file_blocks, _refresh_interval),
         )
 
         with multiparser.FileMonitor(
@@ -493,22 +494,23 @@ def test_parse_h5() -> None:
         monitor.terminate()
 
 
+def _timer_test(trigger, timeout, passed) -> None:
+    _start_time = time.time()
+    _test_timeout = 0
+    while not trigger.is_set():
+        _test_timeout += 0.1
+        time.sleep(0.1)
+        if _test_timeout >= timeout + 2:
+            passed.value = 1000000
+            return
+    _end_time = time.time()
+    passed.value = int(_end_time - _start_time)
+
+
 @pytest.mark.monitor
 def test_timeout_trigger() -> None:
     _timeout: int = 5
     _test_passed = multiprocessing.Value("i", 0)
-
-    def timer_test(trigger, timeout, passed) -> None:
-        _start_time = time.time()
-        _test_timeout = 0
-        while not trigger.is_set():
-            _test_timeout += 0.1
-            time.sleep(0.1)
-            if _test_timeout >= timeout + 2:
-                passed.value = 1000000
-                return
-        _end_time = time.time()
-        passed.value = int(_end_time - _start_time)
 
     with multiparser.FileMonitor(
         per_thread_callback=lambda *_, **__: (),
@@ -518,7 +520,7 @@ def test_timeout_trigger() -> None:
     ) as monitor:
         monitor.run()
         _process = multiprocessing.Process(
-            target=timer_test,
+            target=_timer_test,
             args=(monitor._monitor_termination_trigger, _timeout, _test_passed),
         )
 
@@ -647,6 +649,12 @@ def test_log_parser_with_args() -> None:
             monitor.run()
 
 
+def _dummy_file(out_dir: str, timeout: int) -> None:
+    with open(os.path.join(out_dir, "test.tst")) as out_f:
+        out_f.write("testing")
+    time.sleep(timeout)
+
+
 @pytest.mark.monitor
 @pytest.mark.parametrize("style", ("normal", "mixed", "list"))
 def test_custom_parser(style: str) -> None:
@@ -665,11 +673,6 @@ def test_custom_parser(style: str) -> None:
     with tempfile.TemporaryDirectory() as temp_d:
         _timeout: int = 5
 
-        def dummy_file(out_dir: str = temp_d, timeout: int = _timeout) -> None:
-            with open(os.path.join(out_dir, "test.tst")) as out_f:
-                out_f.write("testing")
-            time.sleep(timeout)
-
         with multiparser.FileMonitor(
             per_thread_callback=lambda *_, **__: (),
             log_level=logging.DEBUG,
@@ -681,7 +684,7 @@ def test_custom_parser(style: str) -> None:
                 path_glob_exprs=["*.tst"], tracked_values=None, parser_func=_parser_func
             )
             _process = multiprocessing.Process(
-                target=dummy_file,
+                target=_dummy_file, args=(temp_d, _timeout)
             )
 
             _process.start()
