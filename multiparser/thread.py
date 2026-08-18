@@ -409,7 +409,11 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         if self._exception_test:
             raise AssertionError("TESTING_MODE: Test AssertionError")
 
-        while not self._termination_trigger.is_set():
+        _terminated = False
+
+        while not _terminated:
+            _terminated = self._termination_trigger.is_set()
+
             if any(self.exceptions.values()) and self._terminate_on_file_thread_fail:
                 break
 
