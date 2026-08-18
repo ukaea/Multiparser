@@ -1,3 +1,7 @@
+# 2026-08-18 [v1.0.7](https://github.com/ukaea/Multiparser/releases/tag/v1.0.7)
+
+- Execute parsers at least once even if termination trigger called.
+
 # 2026-01-26 [v1.0.6](https://github.com/ukaea/Multiparser/releases/tag/v1.0.6)
 
 - Fix `flatdict==4.0.0` to address breakages due to `pkg_resources` removal.
