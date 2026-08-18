@@ -288,7 +288,7 @@ class FileThreadLauncher(typing.Generic[CallbackType, TrackableType]):
         self._notifier: MessageCallback = notification_callback
         self._file_threads: dict[str, threading.Thread] = {}
         self._exclude_globex: list[str] | None = exclude_files_globex
-        self._records: list[typing.Tuple[str, str]] = []
+        self._records: list[tuple[str, str]] = []
         self._interval = refresh_interval
         self._monitored_files = file_list if file_list is not None else []
         self._flatten_data = flatten_data

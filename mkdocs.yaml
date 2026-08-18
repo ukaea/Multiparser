@@ -39,20 +39,20 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started:
-    - Installation: installation.md
-    - How it Works: how_it_works.md
-    - Basic Example: basic_example.md
+      - Installation: installation.md
+      - How it Works: how_it_works.md
+      - Basic Example: basic_example.md
   - Concepts:
-    - Parsing Types: tracking_and_tailing.md
-    - Built-in Parsers: builtin_parsers.md
-    - Custom Parsers: custom_parsers.md
+      - Parsing Types: tracking_and_tailing.md
+      - Built-in Parsers: builtin_parsers.md
+      - Custom Parsers: custom_parsers.md
   - Development:
-    - Contributing: development.md
+      - Contributing: development.md
   - Reference:
-    - File Monitor:
-      - file_monitor.md
-      - tracking.md
-      - tailing.md
+      - File Monitor:
+          - file_monitor.md
+          - tracking.md
+          - tailing.md
 plugins:
   - search
   - mkdocstrings:
@@ -73,13 +73,12 @@ plugins:
       # These fields are all optional; the defaults are as below...
       alias_type: symlink
       redirect_template: null
-      deploy_prefix: ''
+      deploy_prefix: ""
       canonical_version: null
       version_selector: true
       css_dir: css
       javascript_dir: js
   - mermaid2
-site_description: Lessons on using the Ansible framework
 theme:
   name: material
   favicon: media/logo_2.png

@@ -86,6 +86,7 @@ markers = [
 
 [tool.interrogate]
 ignore-init-method = true
+ignore-nested-functions = true
 fail-under = 95
 verbose = 1
 exclude = ["docs", "tests", "multiparser/typing.py"]

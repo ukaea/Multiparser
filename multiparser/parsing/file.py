@@ -151,7 +151,7 @@ def record_toml(input_file: str) -> TimeStampedData:
     return {}, toml.load(input_file)
 
 
-SUFFIX_PARSERS: dict[typing.Tuple[str, ...], typing.Callable] = {
+SUFFIX_PARSERS: dict[tuple[str, ...], typing.Callable] = {
     ("csv",): record_csv,
     ("pkl", "pickle", "pckl"): record_pickle,
     ("pqt", "parquet"): record_parquet,
@@ -253,12 +253,12 @@ def record_file(
     raise TypeError(f"File of type '{_extension}' could not be recognised")
 
 
-record_toml.__skip_validation = True
-record_csv.__skip_validation = True
-record_json.__skip_validation = True
-record_yaml.__skip_validation = True
-record_feather.__skip_validation = True
-record_pickle.__skip_validation = True
-record_parquet.__skip_validation = True
-record_fortran_nml.__skip_validation = True
-record_file.__skip_validation = True
+record_toml.__skip_validation = True  # type: ignore[attr-defined]
+record_csv.__skip_validation = True  # type: ignore[attr-defined]
+record_json.__skip_validation = True  # type: ignore[attr-defined]
+record_yaml.__skip_validation = True  # type: ignore[attr-defined]
+record_feather.__skip_validation = True  # type: ignore[attr-defined]
+record_pickle.__skip_validation = True  # type: ignore[attr-defined]
+record_parquet.__skip_validation = True  # type: ignore[attr-defined]
+record_fortran_nml.__skip_validation = True  # type: ignore[attr-defined]
+record_file.__skip_validation = True  # type: ignore[attr-defined]

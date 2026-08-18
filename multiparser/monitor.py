@@ -553,7 +553,7 @@ class FileMonitor:
 
         if not _tracked_values or parser_func:
             _reg_lab_expr_pairing: (
-                list[typing.Tuple[str | None, re.Pattern[str] | str]] | None
+                list[tuple[str | None, re.Pattern[str] | str]] | None
             ) = None
         else:
             _labels = _labels or [None] * len(_tracked_values)
