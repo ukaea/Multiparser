@@ -1,6 +1,8 @@
-# 2026-08-18 [v1.0.7](https://github.com/ukaea/Multiparser/releases/tag/v1.0.7)
+# 2026-08-18 [v1.0.8](https://github.com/ukaea/Multiparser/releases/tag/v1.0.8)
 
 - Execute parsers at least once even if termination trigger called.
+
+~~# 2026-08-18 [v1.0.7](https://github.com/ukaea/Multiparser/releases/tag/v1.0.7)~~ **BROKEN RELEASE**
 
 # 2026-01-26 [v1.0.6](https://github.com/ukaea/Multiparser/releases/tag/v1.0.6)
 

@@ -153,7 +153,6 @@ def _get_filtered_delimited_content(
 @log_parser
 def _record_any_delimited(
     file_content: str,
-    *,
     delimiter: str,
     headers: list[str] | None = None,
     header_pattern: str | re.Pattern[str] | None = None,
@@ -231,7 +230,6 @@ def _record_any_delimited(
 
 def record_with_delimiter(
     file_content: str,
-    *,
     delimiter: str,
     headers: list[str] | None = None,
     tracked_values: list[tuple[str | None, re.Pattern[str]]] | None = None,
@@ -272,8 +270,8 @@ def record_with_delimiter(
         return {}, []
 
     for file_line in _file_lines:
-        _parsed_line: TimeStampedData = _record_any_delimited(
-            file_line,
+        _parsed_line: TimeStampedData = _record_any_delimited(  # type: ignore[call-arg]
+            file_content=file_line,
             delimiter=delimiter,
             tracked_values=tracked_values,
             convert=convert,
@@ -345,8 +343,8 @@ def record_csv(
         return {}, []
 
     for file_line in _file_lines:
-        _parsed_line: TimeStampedData = _record_any_delimited(
-            file_line,
+        _parsed_line: TimeStampedData = _record_any_delimited(  # type: ignore[call-arg]
+            file_content=file_line,
             delimiter=",",
             tracked_values=tracked_values,
             convert=convert,
@@ -523,7 +521,6 @@ def tail_file_n_bytes(file_name: str, read_bytes: int | None) -> tuple[int, list
 
 def record_log(
     input_file: str,
-    *,
     tracked_values: list[tuple[str | None, re.Pattern[str]]] | None = None,
     convert: bool = True,
     ignore_lines: list[re.Pattern[str]] | None = None,
@@ -589,7 +586,7 @@ def record_log(
         # so join lines into single string here, the number of bytes processed
         # is passed into the parser so it is stored
         _parsed_content = parser_func(
-            "".join(_lines),
+            file_content="".join(_lines),  # type: ignore[call-arg]
             __input_file=input_file,
             __read_bytes=__read_bytes,
             convert=convert,
@@ -601,8 +598,8 @@ def record_log(
     _metadata: dict[str, typing.Any] = {}
 
     for line in _lines:
-        _metadata_line, _processed = _process_log_content(
-            line,
+        _metadata_line, _processed = _process_log_content(  # type: ignore[call-arg]
+            file_content=line,
             __input_file=input_file,
             __read_bytes=__read_bytes,
             tracked_values=tracked_values,

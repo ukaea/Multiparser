@@ -287,7 +287,7 @@ class FileMonitor:
         _test_str = string.ascii_lowercase
         _test_str += string.ascii_uppercase
         _test_str += string.ascii_letters
-        _test_str *= 100
+
         try:
             # Parsers are expected to have the keyword argument 'file_content'
             _out = parser(
