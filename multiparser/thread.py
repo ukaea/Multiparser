@@ -117,7 +117,7 @@ def _prepare_parsed_data(
             return
         if isinstance(parsed_data[1][0], dict):
             _metadata, _data = parsed_data
-            _row_number = _metadata.get("__lines_read")
+            _row_number = _metadata.get("__rows_read")
             if _row_number is not None:
                 # The cached total includes this batch. Start at the previous total.
                 _row_number -= sum(bool(row) for row in _data)
@@ -125,7 +125,7 @@ def _prepare_parsed_data(
                 _row_metadata = _metadata.copy()
                 if _row_number is not None and d:
                     _row_number += 1
-                    _row_metadata["line_number"] = _row_number
+                    _row_metadata["row_number"] = _row_number
                 yield (_row_metadata, d)
             return
     elif (
@@ -202,7 +202,7 @@ def _reparse_action(
 
     # Read state must advance even when a block produces no data rows.
     _cached_metadata = {
-        key: value for key, value in cached_metadata.items() if key != "line_number"
+        key: value for key, value in cached_metadata.items() if key != "row_number"
     } | _parsed[0]
     _parsed = (_cached_metadata, _parsed[1])
 

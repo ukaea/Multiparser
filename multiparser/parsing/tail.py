@@ -236,8 +236,8 @@ def _number_parsed_rows(parsed: TimeStampedData, rows_read: int = 0) -> TimeStam
         rows_read += sum(bool(row) for row in data)
     elif data:
         rows_read += 1
-        metadata["line_number"] = rows_read
-    metadata["__lines_read"] = rows_read
+        metadata["row_number"] = rows_read
+    metadata["__rows_read"] = rows_read
     return metadata, data
 
 
@@ -273,7 +273,7 @@ def record_with_delimiter(
     # The delimiter parser assumes each line is a new data entry so
     # revert back to list of lines here
     _file_lines = file_content.split("\n")
-    _rows_read = kwargs.pop("__lines_read", 0)
+    _rows_read = kwargs.pop("__rows_read", 0)
 
     _parsed_data: tuple[dict[str, typing.Any], list[dict[str, typing.Any]]] = (
         {},
@@ -510,7 +510,7 @@ def record_log(
     ignore_lines: list[re.Pattern[str]] | None = None,
     parser_func: ParserFunction | None = None,
     __read_bytes: int | None = None,
-    __lines_read: int = 0,
+    __rows_read: int = 0,
     **parser_kwargs,
 ) -> TimeStampedData:
     """Record lines within a log type file.
@@ -534,12 +534,12 @@ def record_log(
         specify an alternative tail parsing function
     __read_bytes : int | None, optional
         internally set if provided, the position in bytes from which to read the file, by default None
-    __lines_read : int, optional
+    __rows_read : int, optional
         Internal cumulative count of non-empty parsed data rows.
     **parser_kwargs
         arguments to pass to a custom tail parsing function if provided.
         Each non-empty returned data row receives a consecutive 1-based
-        ``line_number`` in callback metadata, continuing across read batches.
+        ``row_number`` in callback metadata, continuing across read batches.
 
     Returns
     -------
@@ -548,9 +548,9 @@ def record_log(
         * actual recorded data from the file.
     """
     if __read_bytes is None:
-        __lines_read = 0
+        __rows_read = 0
     __read_bytes, _lines = tail_file_n_bytes(input_file, __read_bytes)
-    parser_kwargs.pop("line_number", None)
+    parser_kwargs.pop("row_number", None)
 
     # Check if there are patterns defined for lines that should be ignored
     # if this is the case loop through all patterns for each line,
@@ -581,14 +581,14 @@ def record_log(
             file_content="".join(_lines),  # type: ignore[call-arg]
             __input_file=input_file,
             __read_bytes=__read_bytes,
-            __lines_read=__lines_read,
+            __rows_read=__rows_read,
             convert=convert,
             **parser_kwargs,
         )
         _custom_metadata, _custom_data = _parsed_content
         return _number_parsed_rows(
             (_custom_metadata | {"__read_bytes": __read_bytes}, _custom_data),
-            __lines_read,
+            __rows_read,
         )
 
     _data: list[dict[str, typing.Any]] = []
@@ -607,7 +607,7 @@ def record_log(
         _metadata = _metadata or _metadata_line
 
     return _number_parsed_rows(
-        (_metadata | {"__read_bytes": __read_bytes}, _data), __lines_read
+        (_metadata | {"__read_bytes": __read_bytes}, _data), __rows_read
     )
 
 

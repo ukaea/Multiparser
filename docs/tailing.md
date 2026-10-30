@@ -94,7 +94,7 @@ Keyword arguments to pass to the function defined above, useful if you want to s
 
 ## Metadata
 
-Tail parsers include `metadata["line_number"]` in each callback. This is the
+Tail parsers include `metadata["row_number"]` in each callback. This is the
 **1-based parsed data row number**, not the physical file line number. The first
 non-empty data dictionary returned by the parser is row 1, the next is row 2,
 and so on. Headers, blank lines, ignored lines, and anything else that produces
@@ -107,7 +107,7 @@ from multiparser.parsing.tail import record_csv
 
 
 def on_row(data, metadata):
-    print(metadata["file_name"], metadata["line_number"], data)
+    print(metadata["file_name"], metadata["row_number"], data)
 
 
 monitor.tail(
