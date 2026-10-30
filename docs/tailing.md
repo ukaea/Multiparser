@@ -77,12 +77,28 @@ Default: `None`
 
 Optional callback exclusively for this file set, this overwrites the global callback (if specified) within the `FileMonitor` definition (see [here](./file_monitor.md#per-thread-callback)).
 
+
+### `parser_func`
+`#!python Callable[[str, *_], tuple[dict[str, Any], dict[str, Any]]] | None`
+
+Default: `None`
+
+Specific a custom parser for this file set, this must be a log parsing function wrapped in the `multiparser.parsing.tail.log_parser` decorator, for more information see [here](./custom_parsers.md#log-parsers).
+
+### `parser_kwargs`
+`#!python dict[str, Any] | None`
+
+Default: `None`
+
+Keyword arguments to pass to the function defined above, useful if you want to specify near-identical parsing of multiple file sets with slight customisation.
+
+## Metadata
+
 Tail parsers include `metadata["line_number"]` in each callback. This is the
 **1-based parsed data row number**, not the physical file line number. The first
 non-empty data dictionary returned by the parser is row 1, the next is row 2,
 and so on. Headers, blank lines, ignored lines, and anything else that produces
-no data do not count. Numbering continues across appended batches and is
-independent for each file. As with tailing generally, this assumes append-only
+no data do not count. As with tailing generally, this assumes append-only
 files with complete, newline-terminated records; CSV records spanning multiple
 physical lines are not supported.
 
@@ -100,25 +116,6 @@ monitor.tail(
     callback=on_row,
 )
 ```
-
-Custom parsers use the same numbering: a returned dictionary counts as one row,
-and each non-empty dictionary in a returned list counts as one row, regardless
-of how many input lines were used to produce it.
-
-
-### `parser_func`
-`#!python Callable[[str, *_], tuple[dict[str, Any], dict[str, Any]]] | None`
-
-Default: `None`
-
-Specific a custom parser for this file set, this must be a log parsing function wrapped in the `multiparser.parsing.tail.log_parser` decorator, for more information see [here](./custom_parsers.md#log-parsers).
-
-### `parser_kwargs`
-`#!python dict[str, Any] | None`
-
-Default: `None`
-
-Keyword arguments to pass to the function defined above, useful if you want to specify near-identical parsing of multiple file sets with slight customisation.
 
 ## Returns
 
