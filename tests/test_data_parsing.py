@@ -3,7 +3,6 @@ import re
 import string
 import tempfile
 import time
-import typing
 import os.path
 import importlib.util
 
@@ -24,6 +23,8 @@ from multiparser.parsing.tail import (
     record_csv as log_record_csv,
     _extract_label_value_pair,
 )
+
+from multiparser.thread import _prepare_parsed_data, _reparse_action
 
 DATA_LIBRARY: str = os.path.join(os.path.dirname(__file__), "data")
 
@@ -264,3 +265,111 @@ def test_label_value_extraction(regex_result: tuple, label: str | None) -> None:
             tracked_val=re.compile("undefined"),
             type_descriptor="NoType",
         )
+
+
+@pytest.mark.parsing
+@pytest.mark.parametrize("parser", [log_record_csv, record_with_delimiter, None])
+def test_callback_line_numbers_across_batches(tmp_path, parser):
+    path = tmp_path / "data.csv"
+    path.write_text("")
+    captured = []
+    metadata = {}
+    kwargs = {"ignore_lines": [re.compile(r"^#")]}
+    if parser is record_with_delimiter:
+        kwargs["delimiter"] = ","
+
+    def parse():
+        nonlocal metadata
+        metadata = _reparse_action(
+            file_name=str(path),
+            file_type=None,
+            cached_metadata=metadata,
+            modified_time="",
+            tracked_vals=[("value", re.compile(r"^(\d+)$"))],
+            parsing_callback=mp_parse.record_log,
+            parser_kwargs=kwargs,
+            cstm_parser=parser,
+            lock=None,
+            monitor_callback=lambda data, meta: captured.append((data, meta)),
+            flatten_data=False,
+        )
+
+    parse()  # An initially empty file has no header yet.
+    assert captured == []
+    assert metadata["__lines_read"] == 0
+
+    path.write_text("\n# ignored before header\n")
+    parse()
+    assert captured == []
+    assert metadata["__lines_read"] == 2
+
+    with path.open("a") as stream:
+        stream.write("value\n\n10\n# ignored\n20\n\n")
+    parse()
+    assert [meta["line_number"] for _, meta in captured] == [5, 7]
+    assert [data for data, _ in captured] == [{"value": 10}, {"value": 20}]
+    assert metadata["__lines_read"] == 8
+    assert "__read_bytes" in metadata
+    assert all("__line_numbers" not in meta for _, meta in captured)
+
+    # No callbacks, but both ignored and blank lines must advance the cursor.
+    with path.open("a") as stream:
+        stream.write("# ignored again\n\n")
+    parse()
+    assert len(captured) == 2
+    assert metadata["__lines_read"] == 10
+
+    with path.open("a") as stream:
+        stream.write("30\n\n40\n")
+    parse()
+    assert [meta["line_number"] for _, meta in captured] == [5, 7, 11, 13]
+    assert captured[-1][0] == {"value": 40}
+    assert metadata["__lines_read"] == 13
+    # Each callback gets independent metadata, not an overwritten shared dict.
+    assert captured[0][1]["line_number"] == 5
+
+    parse()  # No new content must not repeat any rows or lose state.
+    assert len(captured) == 4
+    assert metadata["__lines_read"] == 13
+
+
+@pytest.mark.parsing
+@pytest.mark.parametrize("headers", [None, ["value"]])
+def test_direct_csv_parser_line_numbers(tmp_path, headers):
+    path = tmp_path / "data.csv"
+    path.write_text("value\n\n1\n2\n")
+    parsed = log_record_csv(
+        file_content=path.read_text(),
+        headers=headers,
+        __input_file=str(path),
+        __read_bytes=path.stat().st_size,
+    )
+    rows = [
+        (meta["line_number"], data)
+        for meta, data in _prepare_parsed_data(parsed)
+        if data
+    ]
+    assert rows == [(3, {"value": 1}), (4, {"value": 2})]
+
+
+@pytest.mark.parsing
+def test_legacy_custom_parser_does_not_get_inferred_row_positions(tmp_path):
+    path = tmp_path / "data.log"
+    path.write_text("first\nsecond\n")
+
+    def parser(file_content, **kwargs):
+        assert kwargs["__line_numbers"] == [1, 2]
+        return {"custom": "metadata"}, [{"block": file_content}]
+
+    metadata, data = mp_parse.record_log(str(path), parser_func=parser)
+    assert metadata["__lines_read"] == 2
+    assert metadata["__read_bytes"] == path.stat().st_size
+    assert "line_number" not in list(_prepare_parsed_data((metadata, data)))[0][0]
+
+
+@pytest.mark.parsing
+@pytest.mark.parametrize("data", [{"x": 1}, [{"x": 1}, {"x": 2}], []])
+def test_legacy_parser_return_formats(data):
+    rows = list(_prepare_parsed_data(({"custom": "metadata"}, data)))
+    expected = data if isinstance(data, list) else [data]
+    assert rows == [({"custom": "metadata"}, row) for row in expected]

@@ -117,8 +117,19 @@ def _prepare_parsed_data(
             return
         if isinstance(parsed_data[1][0], dict):
             _metadata, _data = parsed_data
-            for d in _data:
-                yield (_metadata, d)
+            _line_numbers = _metadata.get("__line_numbers")
+            if _line_numbers is not None and len(_line_numbers) != len(_data):
+                raise RuntimeError("Line numbers must align with parsed rows")
+            _shared_metadata = {
+                key: value
+                for key, value in _metadata.items()
+                if key != "__line_numbers"
+            }
+            for index, d in enumerate(_data):
+                _row_metadata = _shared_metadata.copy()
+                if _line_numbers is not None:
+                    _row_metadata["line_number"] = _line_numbers[index]
+                yield (_row_metadata, d)
             return
     elif (
         isinstance(parsed_data, tuple)
@@ -192,7 +203,13 @@ def _reparse_action(
     if not _parsed:
         return cached_metadata
 
-    _cached_metadata = cached_metadata
+    # Read state must advance even when a block produces no data rows.
+    _cached_metadata = {
+        key: value
+        for key, value in cached_metadata.items()
+        if key not in ("__line_numbers", "line_number")
+    } | _parsed[0]
+    _parsed = (_cached_metadata, _parsed[1])
 
     # If the parser method records a list of dictionaries as data
     # we need to ensure these are handled in the same way as for parsers

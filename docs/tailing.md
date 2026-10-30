@@ -77,6 +77,33 @@ Default: `None`
 
 Optional callback exclusively for this file set, this overwrites the global callback (if specified) within the `FileMonitor` definition (see [here](./file_monitor.md#per-thread-callback)).
 
+The built-in tail parsers (regular-expression logs, CSV, and other delimited files)
+include `metadata["line_number"]` in each callback. This is the **1-based physical
+file line**, counting headers, empty lines, and lines excluded by
+`skip_lines_w_pattern`. Numbering continues across appended batches and is
+independent for each file. As with tailing generally, this assumes append-only
+files with complete, newline-terminated records; CSV records spanning multiple
+physical lines are not supported.
+
+```python
+from multiparser.parsing.tail import record_csv
+
+
+def on_row(data, metadata):
+    print(metadata["file_name"], metadata["line_number"], data)
+
+
+monitor.tail(
+    path_glob_exprs="*.csv",
+    parser_func=record_csv,
+    callback=on_row,
+)
+```
+
+Custom block parsers are not assigned line numbers automatically, since an output
+row may represent several input lines. See [custom parsers](./custom_parsers.md#log-parsers)
+for explicit row-position support.
+
 
 ### `parser_func`
 `#!python Callable[[str, *_], tuple[dict[str, Any], dict[str, Any]]] | None`
