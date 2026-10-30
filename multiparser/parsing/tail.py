@@ -272,7 +272,7 @@ def record_with_delimiter(
     """
     # The delimiter parser assumes each line is a new data entry so
     # revert back to list of lines here
-    _file_lines = file_content.split("\n")
+    _file_lines: list[str] = [i for i in file_content.split("\n") if i]
     _rows_read = kwargs.pop("__rows_read", 0)
 
     _parsed_data: tuple[dict[str, typing.Any], list[dict[str, typing.Any]]] = (
@@ -283,12 +283,10 @@ def record_with_delimiter(
     if headers:
         _parsed_data[0]["headers"] = headers
 
-    if not any(_file_lines):
+    if not _file_lines:
         return _number_parsed_rows(_parsed_data, _rows_read)
 
     for file_line in _file_lines:
-        if not file_line:
-            continue
         _parsed_line: TimeStampedData = _record_any_delimited(  # type: ignore[call-arg]
             file_content=file_line,
             delimiter=delimiter,
