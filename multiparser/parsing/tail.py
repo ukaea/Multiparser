@@ -229,7 +229,22 @@ def _record_any_delimited(
 
 
 def _number_parsed_rows(parsed: TimeStampedData, rows_read: int = 0) -> TimeStampedData:
-    """Number non-empty parsed rows, independently of input file lines."""
+    """Number non-empty parsed rows, independently of input file lines.
+
+    Parameters
+    ----------
+    parsed: TimeStampedData
+        The data and metadata parsed from a file
+    rows_read: int, optional
+        The number of rows read up until this point, default is 0
+
+    Returns
+    -------
+    TimeStampedData
+        * metadata with row number information attached.
+        * actual recorded data from the file.
+
+    """
     metadata, data = parsed
     metadata = metadata.copy()
     if isinstance(data, list):
