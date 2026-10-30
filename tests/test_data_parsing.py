@@ -301,43 +301,52 @@ def test_callback_line_numbers_across_batches(tmp_path, parser):
     path.write_text("\n# ignored before header\n")
     parse()
     assert captured == []
-    assert metadata["__lines_read"] == 2
+    assert metadata["__lines_read"] == 0
 
     with path.open("a") as stream:
         stream.write("value\n\n10\n# ignored\n20\n\n")
     parse()
-    assert [meta["line_number"] for _, meta in captured] == [5, 7]
+    assert [meta["line_number"] for _, meta in captured] == [1, 2]
     assert [data for data, _ in captured] == [{"value": 10}, {"value": 20}]
-    assert metadata["__lines_read"] == 8
+    assert metadata["__lines_read"] == 2
     assert "__read_bytes" in metadata
     assert all("__line_numbers" not in meta for _, meta in captured)
 
-    # No callbacks, but both ignored and blank lines must advance the cursor.
+    # An ignored-only batch advances the byte cursor, not the line count.
+    previous_bytes = metadata["__read_bytes"]
+    with path.open("a") as stream:
+        stream.write("# entirely ignored batch\n")
+    parse()
+    assert len(captured) == 2
+    assert metadata["__lines_read"] == 2
+    assert metadata["__read_bytes"] > previous_bytes
+
+    # Ignored lines advance only the byte cursor; blank lines do not count either.
     with path.open("a") as stream:
         stream.write("# ignored again\n\n")
     parse()
     assert len(captured) == 2
-    assert metadata["__lines_read"] == 10
+    assert metadata["__lines_read"] == 2
 
     with path.open("a") as stream:
         stream.write("30\n\n40\n")
     parse()
-    assert [meta["line_number"] for _, meta in captured] == [5, 7, 11, 13]
+    assert [meta["line_number"] for _, meta in captured] == [1, 2, 3, 4]
     assert captured[-1][0] == {"value": 40}
-    assert metadata["__lines_read"] == 13
+    assert metadata["__lines_read"] == 4
     # Each callback gets independent metadata, not an overwritten shared dict.
-    assert captured[0][1]["line_number"] == 5
+    assert captured[0][1]["line_number"] == 1
 
     parse()  # No new content must not repeat any rows or lose state.
     assert len(captured) == 4
-    assert metadata["__lines_read"] == 13
+    assert metadata["__lines_read"] == 4
 
 
 @pytest.mark.parsing
-@pytest.mark.parametrize("headers", [None, ["value"]])
+@pytest.mark.parametrize("headers", [None, ["x", "y"]])
 def test_direct_csv_parser_line_numbers(tmp_path, headers):
     path = tmp_path / "data.csv"
-    path.write_text("value\n\n1\n2\n")
+    path.write_text("x,y\n\n1,2\n3,4\n")
     parsed = log_record_csv(
         file_content=path.read_text(),
         headers=headers,
@@ -349,22 +358,34 @@ def test_direct_csv_parser_line_numbers(tmp_path, headers):
         for meta, data in _prepare_parsed_data(parsed)
         if data
     ]
-    assert rows == [(3, {"value": 1}), (4, {"value": 2})]
+    assert rows == [(1, {"x": 1, "y": 2}), (2, {"x": 3, "y": 4})]
 
 
 @pytest.mark.parsing
-def test_legacy_custom_parser_does_not_get_inferred_row_positions(tmp_path):
+@pytest.mark.parametrize("single_row", [False, True])
+def test_custom_parser_numbers_returned_rows(tmp_path, single_row):
     path = tmp_path / "data.log"
     path.write_text("first\nsecond\n")
 
     def parser(file_content, **kwargs):
-        assert kwargs["__line_numbers"] == [1, 2]
-        return {"custom": "metadata"}, [{"block": file_content}]
+        row = {"block": file_content}
+        return {"custom": "metadata"}, row if single_row else [{}, row, {}]
 
     metadata, data = mp_parse.record_log(str(path), parser_func=parser)
-    assert metadata["__lines_read"] == 2
+    assert metadata["__lines_read"] == 1
     assert metadata["__read_bytes"] == path.stat().st_size
-    assert "line_number" not in list(_prepare_parsed_data((metadata, data)))[0][0]
+    rows = [(meta, row) for meta, row in _prepare_parsed_data((metadata, data)) if row]
+    assert len(rows) == 1
+    assert rows[0][0]["line_number"] == 1
+    assert rows[0][0]["custom"] == "metadata"
+
+    with path.open("a") as stream:
+        stream.write("third\nfourth\n")
+    metadata, data = mp_parse.record_log(str(path), parser_func=parser, **metadata)
+    rows = [(meta, row) for meta, row in _prepare_parsed_data((metadata, data)) if row]
+    assert len(rows) == 1
+    assert rows[0][0]["line_number"] == 2
+    assert metadata["__lines_read"] == 2
 
 
 @pytest.mark.parsing

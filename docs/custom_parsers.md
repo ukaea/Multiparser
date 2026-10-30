@@ -78,19 +78,16 @@ with multiparser.FileMonitor(timeout=10) as monitor:
 In the case where you would like your parser function to accept additional keyword arguments you can add these
 to the definition and pass them to tracking using the `parser_kwargs` argument.
 
-### Line positions
+### Parsed row numbers
 
-Tail parsers receive `__line_numbers` through their keyword arguments: a list of
-1-based physical file line numbers corresponding to the lines in `file_content`.
-Lines excluded by `skip_lines_w_pattern` have already been removed, but their
-positions still count, so the list may contain gaps.
-
-If a custom parser returns a list of row dictionaries, it can include
-`"__line_numbers": [...]` in its returned metadata to associate a position with
-each output row. The list must align with the **returned rows**, not necessarily
-all input lines. Each callback then receives its row's `metadata["line_number"]`.
-Existing custom parsers can ignore this feature and retain their current return
-format. Internal read-state metadata is maintained by Multiparser.
+Each tail callback receives `metadata["line_number"]`: the 1-based number of the
+parsed data row, continuing across appended batches for that file. A non-empty
+returned dictionary counts as one row; in a returned list, each non-empty
+dictionary counts as one row. Empty dictionaries and empty lists do not count.
+This is independent of the number of input lines consumed, so a block parser
+returning one dictionary produces one numbered row even if the block spans
+several file lines. Multiparser maintains numbering and read state automatically;
+custom parsers do not need to change their return format.
 
 ## Class methods as parsers
 

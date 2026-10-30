@@ -228,6 +228,24 @@ def _record_any_delimited(
     return {}, _out_filtered
 
 
+def _number_parsed_rows(parsed: TimeStampedData, rows_read: int = 0) -> TimeStampedData:
+    """Number non-empty parsed rows, independently of input file lines."""
+    metadata, data = parsed
+    metadata = metadata.copy()
+    if isinstance(data, list):
+        numbers = []
+        for row in data:
+            if row:
+                rows_read += 1
+            numbers.append(rows_read)
+        metadata["__line_numbers"] = numbers
+    elif data:
+        rows_read += 1
+        metadata["line_number"] = rows_read
+    metadata["__lines_read"] = rows_read
+    return metadata, data
+
+
 def record_with_delimiter(
     file_content: str,
     delimiter: str,
@@ -260,10 +278,10 @@ def record_with_delimiter(
     # The delimiter parser assumes each line is a new data entry so
     # revert back to list of lines here
     _file_lines = file_content.split("\n")
-    _line_numbers = kwargs.pop("__line_numbers", list(range(1, len(_file_lines) + 1)))
+    _rows_read = kwargs.pop("__lines_read", 0)
 
     _parsed_data: tuple[dict[str, typing.Any], list[dict[str, typing.Any]]] = (
-        {"__line_numbers": []},
+        {},
         [],
     )
 
@@ -271,12 +289,11 @@ def record_with_delimiter(
         _parsed_data[0]["headers"] = headers
 
     if not any(_file_lines):
-        return {}, []
+        return _number_parsed_rows(_parsed_data, _rows_read)
 
-    for line_number, file_line in zip(_line_numbers, _file_lines):
+    for file_line in _file_lines:
         if not file_line:
             continue
-        _parsed_data[0]["__line_numbers"].append(line_number)
         _parsed_line: TimeStampedData = _record_any_delimited(  # type: ignore[call-arg]
             file_content=file_line,
             delimiter=delimiter,
@@ -306,7 +323,7 @@ def record_with_delimiter(
     if not _parsed_data[0].get("headers"):
         raise AssertionError("Failed to retrieve file header during initial read")
 
-    return _parsed_data
+    return _number_parsed_rows(_parsed_data, _rows_read)
 
 
 def record_csv(
@@ -523,12 +540,11 @@ def record_log(
     __read_bytes : int | None, optional
         internally set if provided, the position in bytes from which to read the file, by default None
     __lines_read : int, optional
-        Internal cumulative physical line count, including ignored lines.
+        Internal cumulative count of non-empty parsed data rows.
     **parser_kwargs
         arguments to pass to a custom tail parsing function if provided.
-        Custom parsers receive ``__line_numbers``, the 1-based physical line
-        positions of the lines in ``file_content``. Built-in parsers return
-        aligned positions in metadata so each callback receives ``line_number``.
+        Each non-empty returned data row receives a consecutive 1-based
+        ``line_number`` in callback metadata, continuing across read batches.
 
     Returns
     -------
@@ -539,10 +555,6 @@ def record_log(
     if __read_bytes is None:
         __lines_read = 0
     __read_bytes, _lines = tail_file_n_bytes(input_file, __read_bytes)
-    _numbered_lines = list(enumerate(_lines, start=__lines_read + 1))
-    __lines_read += len(_lines)
-    # Always preserve read state, including blocks containing only skipped lines.
-    _read_state = {"__read_bytes": __read_bytes, "__lines_read": __lines_read}
     parser_kwargs.pop("__line_numbers", None)
     parser_kwargs.pop("line_number", None)
 
@@ -550,8 +562,8 @@ def record_log(
     # if this is the case loop through all patterns for each line,
     # the patterns can either be string literals or regex compiled patterns
     if ignore_lines:
-        _passing_lines: list[tuple[int, str]] = []
-        for line_number, line in _numbered_lines:
+        _passing_lines: list[str] = []
+        for line in _lines:
             if any(
                 [
                     any(
@@ -564,11 +576,8 @@ def record_log(
                 ]
             ):
                 continue
-            _passing_lines.append((line_number, line))
-        _numbered_lines = _passing_lines
-
-    _line_numbers = [number for number, _ in _numbered_lines]
-    _lines = [line for _, line in _numbered_lines]
+            _passing_lines.append(line)
+        _lines = _passing_lines
 
     if parser_func:
         # In general parser functions are assumed to parse blocks of information
@@ -578,12 +587,15 @@ def record_log(
             file_content="".join(_lines),  # type: ignore[call-arg]
             __input_file=input_file,
             __read_bytes=__read_bytes,
-            __line_numbers=_line_numbers,
+            __lines_read=__lines_read,
             convert=convert,
             **parser_kwargs,
         )
         _custom_metadata, _custom_data = _parsed_content
-        return _custom_metadata | _read_state, _custom_data
+        return _number_parsed_rows(
+            (_custom_metadata | {"__read_bytes": __read_bytes}, _custom_data),
+            __lines_read,
+        )
 
     _data: list[dict[str, typing.Any]] = []
     _metadata: dict[str, typing.Any] = {}
@@ -600,7 +612,9 @@ def record_log(
         _data.append(_processed)  # type: ignore
         _metadata = _metadata or _metadata_line
 
-    return _metadata | _read_state | {"__line_numbers": _line_numbers}, _data
+    return _number_parsed_rows(
+        (_metadata | {"__read_bytes": __read_bytes}, _data), __lines_read
+    )
 
 
 # Built in parsers do not need to be validated by the File Monitor
