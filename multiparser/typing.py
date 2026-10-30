@@ -28,7 +28,7 @@ ExceptionCallback = typing.Callable[[Exception], None]
 TrackedValues = list[re.Pattern[str] | str] | re.Pattern[str] | str
 
 TimeStampedData = tuple[
-    dict[str, str | int | list[str] | list[int]],
+    dict[str, str | int | list[str]],
     dict[str, typing.Any] | list[dict[str, typing.Any]],
 ]
 

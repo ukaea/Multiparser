@@ -233,12 +233,7 @@ def _number_parsed_rows(parsed: TimeStampedData, rows_read: int = 0) -> TimeStam
     metadata, data = parsed
     metadata = metadata.copy()
     if isinstance(data, list):
-        numbers = []
-        for row in data:
-            if row:
-                rows_read += 1
-            numbers.append(rows_read)
-        metadata["__line_numbers"] = numbers
+        rows_read += sum(bool(row) for row in data)
     elif data:
         rows_read += 1
         metadata["line_number"] = rows_read
@@ -555,7 +550,6 @@ def record_log(
     if __read_bytes is None:
         __lines_read = 0
     __read_bytes, _lines = tail_file_n_bytes(input_file, __read_bytes)
-    parser_kwargs.pop("__line_numbers", None)
     parser_kwargs.pop("line_number", None)
 
     # Check if there are patterns defined for lines that should be ignored

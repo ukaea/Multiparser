@@ -310,7 +310,7 @@ def test_callback_line_numbers_across_batches(tmp_path, parser):
     assert [data for data, _ in captured] == [{"value": 10}, {"value": 20}]
     assert metadata["__lines_read"] == 2
     assert "__read_bytes" in metadata
-    assert all("__line_numbers" not in meta for _, meta in captured)
+    assert isinstance(metadata["__lines_read"], int)
 
     # An ignored-only batch advances the byte cursor, not the line count.
     previous_bytes = metadata["__read_bytes"]
@@ -353,6 +353,8 @@ def test_direct_csv_parser_line_numbers(tmp_path, headers):
         __input_file=str(path),
         __read_bytes=path.stat().st_size,
     )
+    assert isinstance(parsed[0]["__lines_read"], int)
+    assert "__line_numbers" not in parsed[0]
     rows = [
         (meta["line_number"], data)
         for meta, data in _prepare_parsed_data(parsed)
