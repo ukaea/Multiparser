@@ -95,8 +95,8 @@ Keyword arguments to pass to the function defined above, useful if you want to s
 ## Metadata
 
 Tail parsers include `metadata["row_number"]` in each callback. This is the
-**1-based parsed data row number**, not the physical file line number. The first
-non-empty data dictionary returned by the parser is row 1, the next is row 2,
+**0-based parsed data row number**, not the physical file line number. The first
+non-empty data dictionary returned by the parser is row 0, the next is row 1,
 and so on. Headers, blank lines, ignored lines, and anything else that produces
 no data do not count. As with tailing generally, this assumes append-only
 files with complete, newline-terminated records; CSV records spanning multiple

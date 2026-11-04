@@ -250,8 +250,8 @@ def _number_parsed_rows(parsed: TimeStampedData, rows_read: int = 0) -> TimeStam
     if isinstance(data, list):
         rows_read += sum(bool(row) for row in data)
     elif data:
-        rows_read += 1
         metadata["row_number"] = rows_read
+        rows_read += 1
     metadata["__rows_read"] = rows_read
     return metadata, data
 
@@ -551,7 +551,7 @@ def record_log(
         Internal cumulative count of non-empty parsed data rows.
     **parser_kwargs
         arguments to pass to a custom tail parsing function if provided.
-        Each non-empty returned data row receives a consecutive 1-based
+        Each non-empty returned data row receives a consecutive 0-based
         ``row_number`` in callback metadata, continuing across read batches.
 
     Returns

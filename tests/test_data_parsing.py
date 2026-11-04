@@ -174,7 +174,7 @@ def test_parse_delimited(fake_delimited_log, request, header) -> None:
 
     for _ in range(10):
         time.sleep(0.1)
-        _, _parsed_data = mp_parse.record_log(
+        _metadata, _parsed_data = mp_parse.record_log(
             input_file=_file,
             tracked_values=None,
             parser_func=record_with_delimiter,
@@ -306,7 +306,7 @@ def test_callback_row_numbers_across_batches(tmp_path, parser):
     with path.open("a") as stream:
         stream.write("value\n\n10\n# ignored\n20\n\n")
     parse()
-    assert [meta["row_number"] for _, meta in captured] == [1, 2]
+    assert [meta["row_number"] for _, meta in captured] == [0, 1]
     assert [data for data, _ in captured] == [{"value": 10}, {"value": 20}]
     assert metadata["__rows_read"] == 2
     assert "__read_bytes" in metadata
@@ -331,11 +331,11 @@ def test_callback_row_numbers_across_batches(tmp_path, parser):
     with path.open("a") as stream:
         stream.write("30\n\n40\n")
     parse()
-    assert [meta["row_number"] for _, meta in captured] == [1, 2, 3, 4]
+    assert [meta["row_number"] for _, meta in captured] == [0, 1, 2, 3]
     assert captured[-1][0] == {"value": 40}
     assert metadata["__rows_read"] == 4
     # Each callback gets independent metadata, not an overwritten shared dict.
-    assert captured[0][1]["row_number"] == 1
+    assert captured[0][1]["row_number"] == 0
 
     parse()  # No new content must not repeat any rows or lose state.
     assert len(captured) == 4
@@ -360,7 +360,7 @@ def test_direct_csv_parser_row_numbers(tmp_path, headers):
         for meta, data in _prepare_parsed_data(parsed)
         if data
     ]
-    assert rows == [(1, {"x": 1, "y": 2}), (2, {"x": 3, "y": 4})]
+    assert rows == [(0, {"x": 1, "y": 2}), (1, {"x": 3, "y": 4})]
 
 
 @pytest.mark.parsing
@@ -378,7 +378,7 @@ def test_custom_parser_numbers_returned_rows(tmp_path, single_row):
     assert metadata["__read_bytes"] == path.stat().st_size
     rows = [(meta, row) for meta, row in _prepare_parsed_data((metadata, data)) if row]
     assert len(rows) == 1
-    assert rows[0][0]["row_number"] == 1
+    assert rows[0][0]["row_number"] == 0
     assert rows[0][0]["custom"] == "metadata"
 
     with path.open("a") as stream:
@@ -386,7 +386,7 @@ def test_custom_parser_numbers_returned_rows(tmp_path, single_row):
     metadata, data = mp_parse.record_log(str(path), parser_func=parser, **metadata)
     rows = [(meta, row) for meta, row in _prepare_parsed_data((metadata, data)) if row]
     assert len(rows) == 1
-    assert rows[0][0]["row_number"] == 2
+    assert rows[0][0]["row_number"] == 1
     assert metadata["__rows_read"] == 2
 
 

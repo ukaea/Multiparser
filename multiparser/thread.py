@@ -124,8 +124,8 @@ def _prepare_parsed_data(
             for d in _data:
                 _row_metadata = _metadata.copy()
                 if _row_number is not None and d:
-                    _row_number += 1
                     _row_metadata["row_number"] = _row_number
+                    _row_number += 1
                 yield (_row_metadata, d)
             return
     elif (
