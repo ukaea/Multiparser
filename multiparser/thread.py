@@ -117,8 +117,16 @@ def _prepare_parsed_data(
             return
         if isinstance(parsed_data[1][0], dict):
             _metadata, _data = parsed_data
+            _row_number = _metadata.get("__rows_read")
+            if _row_number is not None:
+                # The cached total includes this batch. Start at the previous total.
+                _row_number -= sum(bool(row) for row in _data)
             for d in _data:
-                yield (_metadata, d)
+                _row_metadata = _metadata.copy()
+                if _row_number is not None and d:
+                    _row_metadata["row_number"] = _row_number
+                    _row_number += 1
+                yield (_row_metadata, d)
             return
     elif (
         isinstance(parsed_data, tuple)
@@ -192,7 +200,11 @@ def _reparse_action(
     if not _parsed:
         return cached_metadata
 
-    _cached_metadata = cached_metadata
+    # Read state must advance even when a block produces no data rows.
+    _cached_metadata = {
+        key: value for key, value in cached_metadata.items() if key != "row_number"
+    } | _parsed[0]
+    _parsed = (_cached_metadata, _parsed[1])
 
     # If the parser method records a list of dictionaries as data
     # we need to ensure these are handled in the same way as for parsers

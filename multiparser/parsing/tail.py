@@ -228,6 +228,34 @@ def _record_any_delimited(
     return {}, _out_filtered
 
 
+def _number_parsed_rows(parsed: TimeStampedData, rows_read: int = 0) -> TimeStampedData:
+    """Number non-empty parsed rows, independently of input file lines.
+
+    Parameters
+    ----------
+    parsed: TimeStampedData
+        The data and metadata parsed from a file
+    rows_read: int, optional
+        The number of rows read up until this point, default is 0
+
+    Returns
+    -------
+    TimeStampedData
+        * metadata with row number information attached.
+        * actual recorded data from the file.
+
+    """
+    metadata, data = parsed
+    metadata = metadata.copy()
+    if isinstance(data, list):
+        rows_read += sum(bool(row) for row in data)
+    elif data:
+        metadata["row_number"] = rows_read
+        rows_read += 1
+    metadata["__rows_read"] = rows_read
+    return metadata, data
+
+
 def record_with_delimiter(
     file_content: str,
     delimiter: str,
@@ -260,14 +288,18 @@ def record_with_delimiter(
     # The delimiter parser assumes each line is a new data entry so
     # revert back to list of lines here
     _file_lines: list[str] = [i for i in file_content.split("\n") if i]
+    _rows_read = kwargs.pop("__rows_read", 0)
 
-    _parsed_data: tuple[dict[str, typing.Any], list[dict[str, typing.Any]]] = {}, []
+    _parsed_data: tuple[dict[str, typing.Any], list[dict[str, typing.Any]]] = (
+        {},
+        [],
+    )
 
     if headers:
         _parsed_data[0]["headers"] = headers
 
     if not _file_lines:
-        return {}, []
+        return _number_parsed_rows(_parsed_data, _rows_read)
 
     for file_line in _file_lines:
         _parsed_line: TimeStampedData = _record_any_delimited(  # type: ignore[call-arg]
@@ -299,7 +331,7 @@ def record_with_delimiter(
     if not _parsed_data[0].get("headers"):
         raise AssertionError("Failed to retrieve file header during initial read")
 
-    return _parsed_data
+    return _number_parsed_rows(_parsed_data, _rows_read)
 
 
 def record_csv(
@@ -330,49 +362,14 @@ def record_csv(
         * metadata outlining properties such as modified time etc.
         * actual recorded data from the file.
     """
-    # The delimiter parser assumes each line is a new data entry so
-    # revert back to list of lines here
-    _file_lines: list[str] = [i for i in file_content.split("\n") if i]
-
-    _parsed_data: tuple[dict[str, typing.Any], list[dict[str, typing.Any]]] = {}, []
-
-    if headers:
-        _parsed_data[0]["headers"] = headers
-
-    if not _file_lines:
-        return {}, []
-
-    for file_line in _file_lines:
-        _parsed_line: TimeStampedData = _record_any_delimited(  # type: ignore[call-arg]
-            file_content=file_line,
-            delimiter=",",
-            tracked_values=tracked_values,
-            convert=convert,
-            **(_parsed_data[0] | kwargs),
-        )
-
-        if not isinstance(_parsed_line[1], dict):
-            raise AssertionError(
-                "Expected parsed statement to return a dictionary "
-                f"of recorded data but got {_parsed_line}"
-            )
-
-        # Make sure each line does not erase the previous metadata collected at the start
-        # of processing the block, e.g. if headers are set. May have further use in future
-        # if other info is extractable but not necessarily present in the first line
-        for key, value in _parsed_line[0].items():
-            if key in ("headers",) and not _parsed_data[0].get(key):
-                _parsed_data[0]["headers"] = value
-            else:
-                _parsed_data[0][key] = value
-        _parsed_data[1].append(_parsed_line[1])
-
-    # Headers must be read when the file is first created else any values after read
-    # will not align with these headings
-    if not _parsed_data[0].get("headers"):
-        raise AssertionError("Failed to retrieve file header during initial read")
-
-    return _parsed_data
+    return record_with_delimiter(
+        file_content=file_content,
+        delimiter=",",
+        headers=headers,
+        tracked_values=tracked_values,
+        convert=convert,
+        **kwargs,
+    )
 
 
 def _extract_label_value_pair(
@@ -526,6 +523,7 @@ def record_log(
     ignore_lines: list[re.Pattern[str]] | None = None,
     parser_func: ParserFunction | None = None,
     __read_bytes: int | None = None,
+    __rows_read: int = 0,
     **parser_kwargs,
 ) -> TimeStampedData:
     """Record lines within a log type file.
@@ -549,8 +547,12 @@ def record_log(
         specify an alternative tail parsing function
     __read_bytes : int | None, optional
         internally set if provided, the position in bytes from which to read the file, by default None
+    __rows_read : int, optional
+        Internal cumulative count of non-empty parsed data rows.
     **parser_kwargs
-        arguments to pass to a custom tail parsing function if provided
+        arguments to pass to a custom tail parsing function if provided.
+        Each non-empty returned data row receives a consecutive 0-based
+        ``row_number`` in callback metadata, continuing across read batches.
 
     Returns
     -------
@@ -558,7 +560,10 @@ def record_log(
         * metadata outlining properties such as modified time etc.
         * actual recorded data from the file.
     """
+    if __read_bytes is None:
+        __rows_read = 0
     __read_bytes, _lines = tail_file_n_bytes(input_file, __read_bytes)
+    parser_kwargs.pop("row_number", None)
 
     # Check if there are patterns defined for lines that should be ignored
     # if this is the case loop through all patterns for each line,
@@ -589,10 +594,15 @@ def record_log(
             file_content="".join(_lines),  # type: ignore[call-arg]
             __input_file=input_file,
             __read_bytes=__read_bytes,
+            __rows_read=__rows_read,
             convert=convert,
             **parser_kwargs,
         )
-        return _parsed_content
+        _custom_metadata, _custom_data = _parsed_content
+        return _number_parsed_rows(
+            (_custom_metadata | {"__read_bytes": __read_bytes}, _custom_data),
+            __rows_read,
+        )
 
     _data: list[dict[str, typing.Any]] = []
     _metadata: dict[str, typing.Any] = {}
@@ -609,7 +619,9 @@ def record_log(
         _data.append(_processed)  # type: ignore
         _metadata = _metadata or _metadata_line
 
-    return _metadata, _data
+    return _number_parsed_rows(
+        (_metadata | {"__read_bytes": __read_bytes}, _data), __rows_read
+    )
 
 
 # Built in parsers do not need to be validated by the File Monitor

@@ -92,6 +92,31 @@ Default: `None`
 
 Keyword arguments to pass to the function defined above, useful if you want to specify near-identical parsing of multiple file sets with slight customisation.
 
+## Metadata
+
+Tail parsers include `metadata["row_number"]` in each callback. This is the
+**0-based parsed data row number**, not the physical file line number. The first
+non-empty data dictionary returned by the parser is row 0, the next is row 1,
+and so on. Headers, blank lines, ignored lines, and anything else that produces
+no data do not count. As with tailing generally, this assumes append-only
+files with complete, newline-terminated records; CSV records spanning multiple
+physical lines are not supported.
+
+```python
+from multiparser.parsing.tail import record_csv
+
+
+def on_row(data, metadata):
+    print(metadata["file_name"], metadata["row_number"], data)
+
+
+monitor.tail(
+    path_glob_exprs="*.csv",
+    parser_func=record_csv,
+    callback=on_row,
+)
+```
+
 ## Returns
 
 `#!python None`
